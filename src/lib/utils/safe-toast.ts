@@ -1,4 +1,4 @@
-import { toast as sonnerToast } from "sonner@2.0.3";
+import { toast as sonnerToast } from "sonner";
 
 /**
  * Wrapper seguro para toast que previne erros se o Toaster não estiver montado
