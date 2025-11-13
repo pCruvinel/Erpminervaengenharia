@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '../ui/button';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { PrimaryButton } from '../ui/primary-button';
+import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 
 interface WorkflowFooterProps {
   currentStep: number;
@@ -14,6 +15,8 @@ interface WorkflowFooterProps {
   disablePrev?: boolean;
   disableNext?: boolean;
   showDraftButton?: boolean;
+  isLoading?: boolean;
+  loadingText?: string;
 }
 
 export function WorkflowFooter({
@@ -28,6 +31,8 @@ export function WorkflowFooter({
   disablePrev = false,
   disableNext = false,
   showDraftButton = true,
+  isLoading = false,
+  loadingText = 'Processando...',
 }: WorkflowFooterProps) {
   const isLastStep = currentStep === totalSteps;
 
@@ -37,7 +42,7 @@ export function WorkflowFooter({
         <Button
           variant="outline"
           onClick={onPrevStep}
-          disabled={disablePrev || currentStep === 1}
+          disabled={disablePrev || currentStep === 1 || isLoading}
         >
           <ChevronLeft className="h-4 w-4 mr-2" />
           {prevButtonText}
@@ -49,28 +54,44 @@ export function WorkflowFooter({
 
         <div className="flex gap-2">
           {showDraftButton && (
-            <Button variant="outline" onClick={onSaveDraft}>
+            <Button variant="outline" onClick={onSaveDraft} disabled={isLoading}>
               Salvar Rascunho
             </Button>
           )}
           {isLastStep ? (
-            <Button 
+            <PrimaryButton 
               onClick={onNextStep}
-              disabled={disableNext}
-              style={{ backgroundColor: '#06b6d4', color: 'white' }}
+              disabled={disableNext || isLoading}
             >
-              {finalButtonText}
-              <Check className="h-4 w-4 ml-2" />
-            </Button>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {loadingText}
+                </>
+              ) : (
+                <>
+                  {finalButtonText}
+                  <Check className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </PrimaryButton>
           ) : (
-            <Button 
+            <PrimaryButton 
               onClick={onNextStep}
-              disabled={disableNext}
-              style={{ backgroundColor: '#06b6d4', color: 'white' }}
+              disabled={disableNext || isLoading}
             >
-              {nextButtonText}
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {loadingText}
+                </>
+              ) : (
+                <>
+                  {nextButtonText}
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </PrimaryButton>
           )}
         </div>
       </div>

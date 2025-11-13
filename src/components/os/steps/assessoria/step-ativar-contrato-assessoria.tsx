@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '../../../ui/button';
+import { PrimaryButton } from '../../../ui/primary-button';
 import { Alert, AlertDescription } from '../../../ui/alert';
 import { CheckCircle } from 'lucide-react';
 
@@ -28,15 +29,13 @@ export function StepAtivarContratoAssessoria({ tipoOS, onAtivarContrato }: StepA
           </p>
         </div>
 
-        <Button
+        <PrimaryButton
           size="lg"
           onClick={onAtivarContrato}
-          style={{ backgroundColor: '#06b6d4' }}
-          className="text-white hover:opacity-90"
         >
           <CheckCircle className="w-5 h-5 mr-2" />
           Ativar Contrato
-        </Button>
+        </PrimaryButton>
 
         <p className="text-xs text-muted-foreground text-center max-w-md">
           Ao ativar, uma nova {tipoOS === 'OS-05' ? 'OS 12' : 'OS 11'} será criada automaticamente para a execução do contrato.

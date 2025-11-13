@@ -3,7 +3,7 @@ import { Mail, Lock } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { PrimaryButton } from "../ui/primary-button";
-import { toast } from "sonner@2.0.3";
+import { toast } from "../../lib/utils/safe-toast";
 import { MinervaLogo } from "../layout/minerva-logo";
 
 interface LoginPageProps {
@@ -141,7 +141,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <PrimaryButton
               type="submit"
               className="w-full rounded-md"
-              loading={isLoading}
+              isLoading={isLoading}
               loadingText="Entrando..."
             >
               Entrar

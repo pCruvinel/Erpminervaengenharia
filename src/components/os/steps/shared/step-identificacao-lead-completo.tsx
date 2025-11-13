@@ -1,20 +1,22 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '../../../ui/button';
+import { PrimaryButton } from '../../../ui/primary-button';
 import { Input } from '../../../ui/input';
 import { Label } from '../../../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../ui/select';
 import { Alert, AlertDescription } from '../../../ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../ui/dialog';
-import { Search, UserPlus, Check, AlertCircle } from 'lucide-react';
+import { Search, UserPlus, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '../../../ui/avatar';
 import { Switch } from '../../../ui/switch';
 import { Separator } from '../../../ui/separator';
 import { cn } from '../../../ui/utils';
-import { mockLeads } from '../../../../lib/mock-data';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../../../ui/command';
+import { useClientes, useCreateCliente, transformFormToCliente } from '../../../../lib/hooks/use-clientes';
+import { toast } from '../../../../lib/utils/safe-toast';
 
 interface FormDataCompleto {
   nome: string;
@@ -63,7 +65,124 @@ export function StepIdentificacaoLeadCompleto({
   onFormDataChange,
   onSaveNewLead,
 }: StepIdentificacaoLeadCompletoProps) {
-  const selectedLead = mockLeads.find(l => l.id === selectedLeadId);
+  // Buscar leads do banco de dados
+  const { clientes: leads, loading, error, refetch } = useClientes('LEAD');
+  const { mutate: createCliente, loading: creating } = useCreateCliente();
+  
+  // Estado local para salvar
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const selectedLead = leads?.find(l => l.id === selectedLeadId);
+  
+  // Função para preencher formData com dados do lead selecionado
+  const preencherFormDataComLead = (lead: any) => {
+    try {
+      console.log('📋 Preenchendo dados do lead:', lead);
+      
+      onFormDataChange({
+        nome: lead.nome_razao_social || '',
+        cpfCnpj: lead.cpf_cnpj || '',
+        tipo: lead.tipo_cliente === 'PESSOA_FISICA' ? 'fisica' : 'juridica',
+        nomeResponsavel: lead.nome_responsavel || '',
+        cargoResponsavel: lead.endereco?.cargo_responsavel || '',
+        telefone: lead.telefone || '',
+        email: lead.email || '',
+        tipoEdificacao: lead.endereco?.tipo_edificacao || '',
+        qtdUnidades: lead.endereco?.qtd_unidades || '',
+        qtdBlocos: lead.endereco?.qtd_blocos || '',
+        qtdPavimentos: lead.endereco?.qtd_pavimentos || '',
+        tipoTelhado: lead.endereco?.tipo_telhado || '',
+        possuiElevador: lead.endereco?.possui_elevador || false,
+        possuiPiscina: lead.endereco?.possui_piscina || false,
+        cep: lead.endereco?.cep || '',
+        endereco: lead.endereco?.rua || '',
+        numero: lead.endereco?.numero || '',
+        complemento: lead.endereco?.complemento || '',
+        bairro: lead.endereco?.bairro || '',
+        cidade: lead.endereco?.cidade || '',
+        estado: lead.endereco?.estado || '',
+      });
+      
+      console.log('✅ Dados do lead preenchidos com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao preencher dados do lead:', error);
+      toast.error('Erro ao carregar dados do lead');
+    }
+  };
+  
+  // Handler para selecionar lead (com tratamento de erro)
+  const handleSelectLead = (lead: any) => {
+    try {
+      console.log('🎯 Selecionando lead:', lead.id);
+      
+      // Validar lead
+      if (!lead || !lead.id) {
+        console.error('❌ Lead inválido:', lead);
+        try {
+          toast.error('Lead inválido');
+        } catch (toastError) {
+          console.error('❌ Erro ao exibir toast de validação:', toastError);
+        }
+        return;
+      }
+      
+      // Selecionar lead
+      onSelectLead(lead.id);
+      
+      // Preencher dados
+      preencherFormDataComLead(lead);
+      
+      // Fechar combobox após um pequeno delay para evitar problemas de rendering
+      setTimeout(() => {
+        onShowComboboxChange(false);
+      }, 50);
+      
+      console.log('✅ Lead selecionado com sucesso:', lead.nome_razao_social);
+    } catch (error) {
+      console.error('❌ Erro ao selecionar lead:', error);
+      try {
+        toast.error('Erro ao selecionar lead. Tente novamente.');
+      } catch (toastError) {
+        console.error('❌ Erro ao exibir toast:', toastError);
+      }
+    }
+  };
+  
+  // Handler para salvar novo lead no banco
+  const handleSaveNewLead = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Validações básicas
+      if (!formData.nome || !formData.cpfCnpj || !formData.telefone || !formData.email) {
+        toast.error('Preencha todos os campos obrigatórios');
+        return;
+      }
+      
+      // Transformar dados do formulário para formato da API
+      const clienteData = transformFormToCliente(formData);
+      
+      // Criar cliente no banco
+      const novoCliente = await createCliente(clienteData);
+      
+      // Atualizar lista de clientes
+      await refetch();
+      
+      // Selecionar o novo lead criado
+      onSelectLead(novoCliente.id);
+      
+      // Fechar dialog
+      onShowNewLeadDialogChange(false);
+      
+      // Chamar callback original (se necessário)
+      onSaveNewLead();
+      
+    } catch (error) {
+      console.error('Erro ao salvar lead:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <>
@@ -75,6 +194,19 @@ export function StepIdentificacaoLeadCompleto({
           </AlertDescription>
         </Alert>
 
+        {/* Alerta de erro ao carregar leads */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>Erro ao carregar leads do banco de dados</span>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="space-y-4">
           <Label>Cliente / Lead</Label>
           <Popover open={showCombobox} onOpenChange={onShowComboboxChange}>
@@ -83,8 +215,18 @@ export function StepIdentificacaoLeadCompleto({
                 variant="outline"
                 role="combobox"
                 className="w-full justify-between focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                disabled={loading}
               >
-                {selectedLead ? selectedLead.nome : "Buscar por nome, CPF ou CNPJ..."}
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Carregando leads...
+                  </>
+                ) : selectedLead ? (
+                  selectedLead.nome_razao_social
+                ) : (
+                  "Buscar por nome, CPF ou CNPJ..."
+                )}
                 <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
@@ -97,37 +239,59 @@ export function StepIdentificacaoLeadCompleto({
                 <CommandInput placeholder="Buscar por nome, CPF ou CNPJ..." className="focus:ring-0 focus:ring-offset-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none" />
                 <CommandEmpty>
                   <div className="py-6 text-center text-sm text-muted-foreground">
-                    Nenhum cliente encontrado.
+                    {loading ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando leads...
+                      </div>
+                    ) : error ? (
+                      <div className="space-y-2">
+                        <p className="text-destructive">Erro ao carregar leads</p>
+                        <Button variant="outline" size="sm" onClick={() => refetch()}>
+                          Tentar novamente
+                        </Button>
+                      </div>
+                    ) : (
+                      'Nenhum lead encontrado.'
+                    )}
                   </div>
                 </CommandEmpty>
                 <CommandList>
                   <CommandGroup>
-                    {mockLeads.map((lead) => (
-                      <CommandItem
-                        key={lead.id}
-                        value={`${lead.nome} ${lead.cpfCnpj}`}
-                        onSelect={() => onSelectLead(lead.id)}
-                        className="flex items-center gap-2 px-3 py-2"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>
-                            {lead.nome.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{lead.nome}</div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {lead.cpfCnpj} • {lead.telefone}
+                    {leads && leads.length > 0 && leads.map((lead) => {
+                      // Validar lead antes de renderizar
+                      if (!lead || !lead.id || !lead.nome_razao_social) {
+                        console.warn('⚠️ Lead inválido detectado:', lead);
+                        return null;
+                      }
+                      
+                      return (
+                        <CommandItem
+                          key={lead.id}
+                          value={`${lead.nome_razao_social} ${lead.cpf_cnpj || ''}`}
+                          onSelect={() => handleSelectLead(lead)}
+                          className="flex items-center gap-2 px-3 py-2"
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>
+                              {lead.nome_razao_social.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{lead.nome_razao_social}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {lead.cpf_cnpj || 'Sem CPF/CNPJ'} • {lead.telefone || 'Sem telefone'}
+                            </div>
                           </div>
-                        </div>
-                        <Check
-                          className={cn(
-                            "h-4 w-4 shrink-0",
-                            selectedLeadId === lead.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                      </CommandItem>
-                    ))}
+                          <Check
+                            className={cn(
+                              "h-4 w-4 shrink-0",
+                              selectedLeadId === lead.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 </CommandList>
                 
@@ -173,6 +337,62 @@ export function StepIdentificacaoLeadCompleto({
             </PopoverContent>
           </Popover>
         </div>
+
+        {/* Card de Confirmação de Dados Carregados */}
+        {selectedLead && (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+            <div className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="space-y-3 flex-1">
+                <div>
+                  <p className="text-sm font-medium text-green-900">Lead selecionado com sucesso!</p>
+                  <p className="text-xs text-green-700 mt-1">
+                    Os dados abaixo foram carregados automaticamente:
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div>
+                    <span className="text-green-700">Nome:</span>{' '}
+                    <span className="font-medium text-green-900">{formData.nome || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-700">CPF/CNPJ:</span>{' '}
+                    <span className="font-medium text-green-900">{formData.cpfCnpj || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-700">Responsável:</span>{' '}
+                    <span className="font-medium text-green-900">{formData.nomeResponsavel || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-700">Telefone:</span>{' '}
+                    <span className="font-medium text-green-900">{formData.telefone || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-700">Email:</span>{' '}
+                    <span className="font-medium text-green-900">{formData.email || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-700">Qtd. Unidades:</span>{' '}
+                    <span className="font-medium text-green-900">{formData.qtdUnidades || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-700">Qtd. Blocos:</span>{' '}
+                    <span className="font-medium text-green-900">{formData.qtdBlocos || '-'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-green-700">Endereço:</span>{' '}
+                    <span className="font-medium text-green-900">
+                      {formData.endereco && formData.numero 
+                        ? `${formData.endereco}, ${formData.numero}${formData.complemento ? ` - ${formData.complemento}` : ''} - ${formData.bairro}, ${formData.cidade}/${formData.estado}`
+                        : '-'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Dialog de Criação de Novo Lead */}
         <Dialog open={showNewLeadDialog} onOpenChange={onShowNewLeadDialogChange}>
@@ -501,12 +721,26 @@ export function StepIdentificacaoLeadCompleto({
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => onShowNewLeadDialogChange(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => onShowNewLeadDialogChange(false)}
+                disabled={isSaving || creating}
+              >
                 Cancelar
               </Button>
-              <Button onClick={onSaveNewLead} style={{ backgroundColor: '#06b6d4', color: 'white' }}>
-                Salvar Lead
-              </Button>
+              <PrimaryButton 
+                onClick={handleSaveNewLead} 
+                disabled={isSaving || creating}
+              >
+                {(isSaving || creating) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Lead'
+                )}
+              </PrimaryButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>

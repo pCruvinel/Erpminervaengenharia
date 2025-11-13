@@ -1079,3 +1079,48 @@ a:hover {
     font-family: ui-monospace, 'SF Mono', Monaco, 'Consolas', monospace !important;
   }
 }
+
+/* ==========================================
+ * PRINT STYLES
+ * Estilos para impressão de propostas
+ * ========================================== */
+
+@media print {
+  /* Ocultar elementos de navegação */
+  .print\\:hidden,
+  header,
+  nav,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Remover sombras e bordas desnecessárias */
+  .print\\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  /* Garantir que o conteúdo ocupe toda a página */
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Evitar quebras de página dentro de elementos importantes */
+  .print\\:break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Forçar quebras de página onde necessário */
+  .print\\:break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Cores de fundo para impressão */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

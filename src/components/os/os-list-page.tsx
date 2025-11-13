@@ -1,13 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { FileDown } from 'lucide-react';
+import { Alert, AlertDescription } from '../ui/alert';
+import { FileDown, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { User } from '../../lib/types';
 import { OSListHeader } from './os-list-header';
 import { OSFiltersCard } from './os-filters-card';
 import { OSTable } from './os-table';
+import { useOrdensServico } from '../../lib/hooks/use-ordens-servico';
+import { ordensServicoAPI } from '../../lib/api-client';
+import { toast } from '../../lib/utils/safe-toast';
 
-// Mock data para Ordens de Serviço
+// Mock data para fallback (caso API falhe)
 const mockOrdensServico = [
   {
     id: '1',
@@ -111,20 +115,43 @@ export function OSListPage({ currentUser, onNavigate }: OSListPageProps) {
   const [tipoOSFilter, setTipoOSFilter] = useState('todos');
   const [setorFilter, setSetorFilter] = useState('todos');
   const [responsavelFilter, setResponsavelFilter] = useState('todos');
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Buscar OS da API usando hook customizado
+  const { 
+    ordensServico: ordensServicoFromAPI, 
+    loading, 
+    error,
+    refetch,
+    raw: ordensServicoAPI_data
+  } = useOrdensServico();
+
+  // 🔍 DEBUG: Verificar dados recebidos da API
+  console.log('🔍 [OS-LIST-DEBUG] Dados da API:', {
+    total_api: ordensServicoFromAPI?.length || 0,
+    loading,
+    error: error?.message,
+    primeiras_3_OS: ordensServicoFromAPI?.slice(0, 3)
+  });
 
   // Filtrar OS baseado em RLS (Role-Level Security)
   const ordensServico = useMemo(() => {
-    let filtered = [...mockOrdensServico];
+    let filtered = error ? [...mockOrdensServico] : [...(ordensServicoFromAPI || [])];
+
+    console.log('🔍 [FILTROS-DEBUG] Antes dos filtros RLS:', filtered.length);
 
     // Aplicar RLS baseado no papel do usuário
     if (currentUser.role === 'colaborador') {
       // Colaborador vê apenas suas próprias OS
       filtered = filtered.filter(os => os.responsavel.id === currentUser.id);
+      console.log(`🔍 [RLS-COLABORADOR] Usuário: ${currentUser.id}, OS filtradas: ${filtered.length}`);
     } else if (currentUser.role === 'gestor') {
       // Gestor vê apenas OS do seu setor
       filtered = filtered.filter(os => os.tipoOS.setor === currentUser.setor);
+      console.log(`🔍 [RLS-GESTOR] Setor: ${currentUser.setor}, OS filtradas: ${filtered.length}`);
     }
     // Diretoria e Gestor ADM veem todas
+    console.log(`🔍 [RLS] Role: ${currentUser.role}, OS após RLS: ${filtered.length}`);
 
     // Aplicar filtros de busca
     if (searchTerm) {
@@ -134,31 +161,52 @@ export function OSListPage({ currentUser, onNavigate }: OSListPageProps) {
         os.cliente.nome.toLowerCase().includes(search) ||
         os.titulo.toLowerCase().includes(search)
       );
+      console.log(`🔍 [BUSCA] Termo: "${searchTerm}", OS filtradas: ${filtered.length}`);
     }
 
     if (statusFilter !== 'todos') {
       filtered = filtered.filter(os => os.status === statusFilter);
+      console.log(`🔍 [STATUS] Filtro: ${statusFilter}, OS filtradas: ${filtered.length}`);
     }
 
     if (tipoOSFilter !== 'todos') {
       filtered = filtered.filter(os => os.tipoOS.id === tipoOSFilter);
+      console.log(`🔍 [TIPO] Filtro: ${tipoOSFilter}, OS filtradas: ${filtered.length}`);
     }
 
     if (setorFilter !== 'todos') {
       filtered = filtered.filter(os => os.tipoOS.setor === setorFilter);
+      console.log(`🔍 [SETOR] Filtro: ${setorFilter}, OS filtradas: ${filtered.length}`);
     }
 
     if (responsavelFilter !== 'todos') {
       filtered = filtered.filter(os => os.responsavel.id === responsavelFilter);
+      console.log(`🔍 [RESPONSAVEL] Filtro: ${responsavelFilter}, OS filtradas: ${filtered.length}`);
     }
 
+    console.log(`✅ [FINAL] Total de OS exibidas: ${filtered.length}`);
     return filtered;
-  }, [searchTerm, statusFilter, tipoOSFilter, setorFilter, responsavelFilter, currentUser]);
+  }, [searchTerm, statusFilter, tipoOSFilter, setorFilter, responsavelFilter, currentUser, ordensServicoFromAPI, error]);
 
   // Função para exportar dados
   const handleExport = () => {
     // Implementação futura: exportar para Excel/CSV
     alert('Funcionalidade de exportação será implementada em breve!');
+  };
+
+  // Função para cancelar OS
+  const handleCancelOS = async (osId: string) => {
+    setIsCancelling(true);
+    try {
+      await ordensServicoAPI.update(osId, { status_geral: 'CANCELADA' });
+      toast.success('OS cancelada com sucesso!');
+      refetch(); // Recarregar a lista
+    } catch (error) {
+      console.error('Erro ao cancelar OS:', error);
+      toast.error('Erro ao cancelar OS. Tente novamente.');
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   // Verificar se o usuário pode ver a coluna Setor
@@ -169,6 +217,42 @@ export function OSListPage({ currentUser, onNavigate }: OSListPageProps) {
       <div className="max-w-[1600px] mx-auto space-y-6">
         {/* Header da Página */}
         <OSListHeader onCreateClick={() => onNavigate('os-criar')} />
+
+
+
+        {/* Loading State */}
+        {loading && (
+          <Alert>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertDescription>
+              Carregando ordens de serviço do banco de dados...
+              <br />
+              <span className="text-xs text-muted-foreground">
+                Se demorar muito, verifique o console do navegador para mais detalhes.
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Erro ao conectar com banco de dados:</strong> {error.message}
+              <br />
+              <span className="text-xs">Exibindo dados de exemplo (mock). </span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="ml-2 h-6"
+                onClick={refetch}
+              >
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Card de Filtros */}
         <OSFiltersCard
@@ -191,16 +275,24 @@ export function OSListPage({ currentUser, onNavigate }: OSListPageProps) {
             <CardTitle>
               {ordensServico.length} {ordensServico.length === 1 ? 'Ordem de Serviço' : 'Ordens de Serviço'}
             </CardTitle>
-            <Button variant="outline" onClick={handleExport}>
-              <FileDown className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={refetch}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+              <Button variant="outline" onClick={handleExport}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <OSTable
               ordensServico={ordensServico}
               canViewSetorColumn={canViewSetorColumn}
               onNavigate={onNavigate}
+              onCancelOS={handleCancelOS}
+              isCancelling={isCancelling}
             />
 
             {/* Informação de paginação */}

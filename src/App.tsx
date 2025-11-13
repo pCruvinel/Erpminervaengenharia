@@ -15,6 +15,8 @@ import { OSDetailsAssessoriaPage } from './components/os/os-details-assessoria-p
 import { OSListPage } from './components/os/os-list-page';
 import { OSCreationHub } from './components/os/os-creation-hub';
 import { OSWizardPlaceholder } from './components/os/os-wizard-placeholder';
+import { TestSchemaReload } from './components/test-schema-reload';
+import { SeedUsuariosPage } from './components/admin/seed-usuarios-page';
 import { 
   mockUsers, 
   mockOrdensServico, 
@@ -24,7 +26,7 @@ import {
 } from './lib/mock-data';
 import { OrdemServico, Comentario, User, OSStatus } from './lib/types';
 
-type Page = 'login' | 'dashboard' | 'os-list' | 'os-criar' | 'wizard-obras-lead' | 'wizard-start-contrato-obra' | 'wizard-assessoria-lead' | 'wizard-start-contrato-assessoria' | 'wizard-solicitacao-reforma' | 'wizard-vistoria' | 'wizard-requisicao-compras' | 'wizard-requisicao-mao-obra' | 'ordens-servico' | 'os-details' | 'os-workflow' | 'os-details-workflow' | 'clientes' | 'financeiro' | 'calendario' | 'configuracoes';
+type Page = 'login' | 'dashboard' | 'os-list' | 'os-criar' | 'wizard-obras-lead' | 'wizard-start-contrato-obra' | 'wizard-assessoria-lead' | 'wizard-start-contrato-assessoria' | 'wizard-solicitacao-reforma' | 'wizard-vistoria' | 'wizard-requisicao-compras' | 'wizard-requisicao-mao-obra' | 'ordens-servico' | 'os-details' | 'os-workflow' | 'os-details-workflow' | 'clientes' | 'financeiro' | 'calendario' | 'configuracoes' | 'debug-schema' | 'seed-usuarios';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
@@ -146,21 +148,15 @@ export default function App() {
     return crumbs;
   };
 
-  // Render Login Page
-  if (currentPage === 'login' || !currentUser) {
-    return (
-      <>
-        <FontLoader />
-        <LoginPage onLogin={handleLogin} />
-        <Toaster />
-      </>
-    );
-  }
+  // Renderização condicional do conteúdo
+  const renderContent = () => {
+    // Render Login Page
+    if (currentPage === 'login' || !currentUser) {
+      return <LoginPage onLogin={handleLogin} />;
+    }
 
-  // Render Main Application with Layout
-  return (
-    <>
-      <FontLoader />
+    // Render Main Application with Layout
+    return (
       <div className="flex h-screen overflow-hidden bg-neutral-100">
         <Sidebar 
           currentPage={currentPage}
@@ -244,6 +240,14 @@ export default function App() {
             
             {currentPage === 'os-details-workflow' && (
               <OSDetailsWorkflowPage key="os-details-workflow" />
+            )}
+            
+            {currentPage === 'debug-schema' && (
+              <TestSchemaReload />
+            )}
+            
+            {currentPage === 'seed-usuarios' && (
+              <SeedUsuariosPage onBack={() => setCurrentPage('configuracoes')} />
             )}
             
             {/* Wizards de Criação de OS */}
@@ -333,8 +337,16 @@ export default function App() {
           </main>
         </div>
       </div>
-      
+    );
+  };
+
+  // Renderização final com Toaster global único
+  return (
+    <>
+      <FontLoader />
+      {/* Toaster global - renderizado PRIMEIRO para garantir que esteja pronto antes de qualquer toast */}
       <Toaster />
+      {renderContent()}
     </>
   );
 }

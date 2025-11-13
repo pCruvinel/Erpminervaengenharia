@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../ui/card';
 import { Button } from '../../../ui/button';
+import { PrimaryButton } from '../../../ui/primary-button';
 import { Input } from '../../../ui/input';
 import { Label } from '../../../ui/label';
 import { Textarea } from '../../../ui/textarea';
@@ -123,15 +124,13 @@ export function StepMemorialEscopo({
           <Label className="text-base">
             2. Etapas da Especificação Técnica <span className="text-destructive">*</span>
           </Label>
-          <Button
-            variant="outline"
-            size="sm"
+          <PrimaryButton
+            variant="secondary"
             onClick={handleAdicionarEtapaPrincipal}
-            style={{ borderColor: '#06b6d4', color: '#06b6d4' }}
           >
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Etapa Principal
-          </Button>
+          </PrimaryButton>
         </div>
 
         {data.etapasPrincipais.length === 0 && (
@@ -153,15 +152,13 @@ export function StepMemorialEscopo({
                   placeholder={`Ex: ${etapaIndex + 1}. Tratamento de Fachada`}
                   className="flex-1"
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <PrimaryButton
+                  variant="secondary"
                   onClick={() => handleAdicionarSubetapa(etapaIndex)}
-                  style={{ color: '#06b6d4' }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Sub-etapa
-                </Button>
+                </PrimaryButton>
                 <Button
                   variant="ghost"
                   size="sm"

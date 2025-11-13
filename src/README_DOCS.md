@@ -6,6 +6,28 @@
 
 ## 📚 Guias Principais
 
+### 📘 [COMPONENTS_GUIDE.md](/COMPONENTS_GUIDE.md) ⭐ NOVO
+**Guia completo de componentes de fluxos OS**
+
+- Arquitetura de componentes
+- 14 componentes documentados (shared + específicos)
+- Padrões de código e props
+- Exemplos práticos de uso
+- WorkflowStepper e WorkflowFooter
+- Guia de implementação
+- Métricas e impacto
+- Referência rápida
+
+**Público:** Desenvolvedores (frontend/full-stack)  
+**Quando usar:** Ao trabalhar com fluxos de OS ou criar componentes
+
+**⚠️ Este guia unifica e substitui:**
+- ~~COMPONENT_ARCHITECTURE.md~~
+- ~~COMPONENTIZATION_SUMMARY.md~~
+- ~~COMPONENTS_CREATED_SUMMARY.md~~
+
+---
+
 ### 🎨 [DESIGN_SYSTEM.md](/DESIGN_SYSTEM.md)
 **Documentação completa do Design System**
 
@@ -107,6 +129,40 @@
 
 ---
 
+## 🧩 Documentação de Componentes
+
+### 📘 [COMPONENTS_GUIDE.md](/COMPONENTS_GUIDE.md) ⭐ GUIA OFICIAL
+**Referência completa de componentes reutilizáveis**
+
+- ✅ 14 componentes criados e documentados
+- ✅ Componentes compartilhados (/shared)
+- ✅ Componentes específicos (/assessoria, /obras)
+- ✅ WorkflowStepper e WorkflowFooter
+- ✅ Padrões de props e lifting state up
+- ✅ Exemplos práticos e validação
+- ✅ Guia de criação de novos componentes
+- ✅ Métricas de impacto (66% redução de código)
+
+**Público:** Desenvolvedores  
+**Quando usar:** Sempre ao trabalhar com fluxos de OS
+
+---
+
+### 📖 [FLOW_COMPONENTS_DICTIONARY.md](/FLOW_COMPONENTS_DICTIONARY.md)
+**Dicionário detalhado de cada componente**
+
+- Definição completa de cada componente
+- Interface TypeScript (Props)
+- Estrutura UI detalhada
+- Campos e validações
+- Design System compliance
+- Exemplos de código
+
+**Público:** Desenvolvedores  
+**Quando usar:** Para detalhes específicos de um componente
+
+---
+
 ## 📋 Documentação de Projeto
 
 ### 🏗️ [DATABASE_SCHEMA.md](/DATABASE_SCHEMA.md)
@@ -177,31 +233,42 @@
 ## 🗂️ Por Tipo de Documento
 
 ### Para Desenvolvimento Rápido
-1. ⚡ [QUICK_REFERENCE.md](/QUICK_REFERENCE.md) - Consulta rápida
-2. 🚨 [COMMON_ERRORS.md](/COMMON_ERRORS.md) - Solução de problemas
-3. 🎨 [DESIGN_SYSTEM.md](/DESIGN_SYSTEM.md) - Referência completa
+1. 📘 [COMPONENTS_GUIDE.md](/COMPONENTS_GUIDE.md) - Componentes de fluxos OS ⭐
+2. ⚡ [QUICK_REFERENCE.md](/QUICK_REFERENCE.md) - Consulta rápida
+3. 🚨 [COMMON_ERRORS.md](/COMMON_ERRORS.md) - Solução de problemas
+4. 🎨 [DESIGN_SYSTEM.md](/DESIGN_SYSTEM.md) - Referência completa
 
 ### Para Entender Arquitetura
-1. 🔧 [TECHNICAL_NOTES.md](/TECHNICAL_NOTES.md) - Decisões técnicas
-2. 📖 [CHANGELOG_PHASE2.md](/CHANGELOG_PHASE2.md) - Histórico
-3. 🏗️ [DATABASE_SCHEMA.md](/DATABASE_SCHEMA.md) - Estrutura de dados
+1. 📘 [COMPONENTS_GUIDE.md](/COMPONENTS_GUIDE.md) - Arquitetura de componentes ⭐
+2. 🔧 [TECHNICAL_NOTES.md](/TECHNICAL_NOTES.md) - Decisões técnicas
+3. 📖 [CHANGELOG_PHASE2.md](/CHANGELOG_PHASE2.md) - Histórico
+4. 🏗️ [DATABASE_SCHEMA.md](/DATABASE_SCHEMA.md) - Estrutura de dados
 
-### Para Implementar Features
-1. 🔄 [FLOW_IMPLEMENTATION.md](/FLOW_IMPLEMENTATION.md) - Fluxos gerais
-2. 🎯 [FLOW_OS_01_04.md](/FLOW_OS_01_04.md) - Fluxo especial
-3. 📘 [IMPLEMENTATION_GUIDE_OS_01_04.md](/IMPLEMENTATION_GUIDE_OS_01_04.md) - Guia detalhado
+### Para Implementar Features de OS
+1. 📘 [COMPONENTS_GUIDE.md](/COMPONENTS_GUIDE.md) - Usar componentes ⭐
+2. 🔄 [FLOW_IMPLEMENTATION.md](/FLOW_IMPLEMENTATION.md) - Fluxos gerais
+3. 🎯 [FLOW_OS_01_04.md](/FLOW_OS_01_04.md) - Fluxo especial
+4. 📖 [IMPLEMENTATION_GUIDE_OS_01_04.md](/IMPLEMENTATION_GUIDE_OS_01_04.md) - Guia detalhado
 
 ### Para Onboarding
 **Ordem recomendada para novos devs:**
 1. 📖 Este arquivo (README_DOCS.md)
 2. 🎨 [DESIGN_SYSTEM.md](/DESIGN_SYSTEM.md) - Overview do sistema
-3. ⚡ [QUICK_REFERENCE.md](/QUICK_REFERENCE.md) - Começar a codar
-4. 🚨 [COMMON_ERRORS.md](/COMMON_ERRORS.md) - Evitar problemas
-5. 🔧 [TECHNICAL_NOTES.md](/TECHNICAL_NOTES.md) - Entender decisões
+3. 📘 [COMPONENTS_GUIDE.md](/COMPONENTS_GUIDE.md) - Componentes reutilizáveis ⭐
+4. ⚡ [QUICK_REFERENCE.md](/QUICK_REFERENCE.md) - Começar a codar
+5. 🚨 [COMMON_ERRORS.md](/COMMON_ERRORS.md) - Evitar problemas
+6. 🔧 [TECHNICAL_NOTES.md](/TECHNICAL_NOTES.md) - Entender decisões
 
 ---
 
 ## 🔍 Buscar por Tópico
+
+### Componentes de Fluxos OS
+- [COMPONENTS_GUIDE.md](/COMPONENTS_GUIDE.md) - Guia completo ⭐
+- [COMPONENTS_GUIDE.md - Índice](/COMPONENTS_GUIDE.md#índice-de-componentes) - Lista de componentes
+- [COMPONENTS_GUIDE.md - Mapeamento](/COMPONENTS_GUIDE.md#mapeamento-de-fluxos) - Componentes por fluxo
+- [COMPONENTS_GUIDE.md - Padrões](/COMPONENTS_GUIDE.md#padrões-de-código) - Como criar/usar
+- [FLOW_COMPONENTS_DICTIONARY.md](/FLOW_COMPONENTS_DICTIONARY.md) - Detalhes técnicos
 
 ### Cores
 - [DESIGN_SYSTEM.md - Paleta de Cores](/DESIGN_SYSTEM.md#paleta-de-cores)
@@ -243,10 +310,11 @@
 ### 2. Implementando OS 01-04
 
 ```
-1. Ler FLOW_OS_01_04.md para entender o fluxo
-2. Seguir IMPLEMENTATION_GUIDE_OS_01_04.md passo a passo
-3. Consultar DATABASE_SCHEMA.md para estrutura de dados
-4. Verificar TRANSITION_DOCUMENT.md para estados
+1. Ler COMPONENTS_GUIDE.md para componentes disponíveis ⭐
+2. Ler FLOW_OS_01_04.md para entender o fluxo
+3. Seguir IMPLEMENTATION_GUIDE_OS_01_04.md passo a passo
+4. Consultar DATABASE_SCHEMA.md para estrutura de dados
+5. Verificar TRANSITION_DOCUMENT.md para estados
 ```
 
 ### 3. Corrigindo bug visual
@@ -386,7 +454,23 @@ Exemplos...
 
 ---
 
-**Versão:** 2.0  
-**Última atualização:** 09/11/2025  
+**Versão:** 2.1  
+**Última atualização:** 10/11/2025  
 **Projeto:** Minerva Engenharia - Sistema ERP  
 **Mantido por:** Design System Team
+
+---
+
+## 📝 Changelog
+
+### v2.1 (10/11/2025)
+- ✅ **NOVO:** COMPONENTS_GUIDE.md - Guia unificado de componentes
+- ✅ Consolidação de COMPONENT_ARCHITECTURE.md, COMPONENTIZATION_SUMMARY.md e COMPONENTS_CREATED_SUMMARY.md
+- ✅ Documentação completa de 14 componentes
+- ✅ Adicionadas seções sobre WorkflowStepper, WorkflowFooter e PrimaryButton
+- ✅ Atualizado README_DOCS.md com novo guia
+
+### v2.0 (09/11/2025)
+- Design System v2.0 completo
+- Documentação de fluxos OS
+- Guias de implementação

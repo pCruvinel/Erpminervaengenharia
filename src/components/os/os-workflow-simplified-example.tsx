@@ -74,6 +74,7 @@ export function OSWorkflowSimplifiedExample({ onBack }: OSWorkflowSimplifiedExam
         steps={stepsSimplified}
         currentStep={currentStep}
         onStepClick={handleStepClick}
+        completedSteps={[]} // Exemplo: sem etapas concluídas
       />
 
       {/* Main Content Area */}

@@ -182,6 +182,7 @@ export function OSDetailsAssessoriaPage({ onBack, tipoOS = 'OS-05' }: OSDetailsA
         steps={steps}
         currentStep={currentStep}
         onStepClick={handleStepClick}
+        completedSteps={[]} // TODO: Implementar lógica de etapas concluídas
       />
 
       {/* Main Content Area */}

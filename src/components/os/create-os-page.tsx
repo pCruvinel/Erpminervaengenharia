@@ -8,10 +8,14 @@ import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar as CalendarIcon, ArrowRight, Search } from 'lucide-react';
+import { Alert, AlertDescription } from '../ui/alert';
+import { Calendar as CalendarIcon, ArrowRight, Search, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { tiposOS, mockClientes } from '../../lib/mock-data';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { useClientes } from '../../lib/hooks/use-clientes';
+import { tiposOSAPI } from '../../lib/api-client';
+import { useApi } from '../../lib/hooks/use-api';
 
 interface CreateOSPageProps {
   onCancel: () => void;
@@ -25,6 +29,24 @@ export function CreateOSPage({ onCancel, onCreate }: CreateOSPageProps) {
   const [prazoEstimado, setPrazoEstimado] = useState<Date>();
   const [descricao, setDescricao] = useState<string>('');
   const [openClienteCombobox, setOpenClienteCombobox] = useState(false);
+
+  // Buscar clientes da API
+  const { clientes: clientesAPI, loading: loadingClientes, error: errorClientes } = useClientes('CLIENTE_ATIVO');
+  
+  // Buscar tipos de OS da API
+  const { data: tiposOSAPI_data, loading: loadingTipos, error: errorTipos } = useApi(() => tiposOSAPI.list());
+
+  // Usar dados da API ou fallback para mock
+  const clientesDisponiveis = errorClientes ? mockClientes : (clientesAPI || []).map((c: any) => ({
+    id: c.id,
+    nome: c.nome_razao_social,
+    cnpj: c.cpf_cnpj
+  }));
+
+  const tiposDisponiveis = errorTipos ? tiposOS : (tiposOSAPI_data || []).map((t: any) => ({
+    id: t.codigo.replace('OS-', ''),
+    label: `${t.codigo}: ${t.nome}`
+  }));
 
   // OS 1, 2, 3, 4 têm fluxo especial com seleção de Lead no Passo 1
   const tiposComFluxoLead = ['01', '02', '03', '04'];
@@ -48,7 +70,7 @@ export function CreateOSPage({ onCancel, onCreate }: CreateOSPageProps) {
     }
   };
 
-  const selectedCliente = mockClientes.find(c => c.id === clienteId);
+  const selectedCliente = clientesDisponiveis.find((c: any) => c.id === clienteId);
 
   return (
     <div className="p-6 bg-muted min-h-screen">
@@ -60,6 +82,25 @@ export function CreateOSPage({ onCancel, onCreate }: CreateOSPageProps) {
             Preencha as informações iniciais para criar uma nova OS
           </p>
         </div>
+
+        {/* Alerts de Conexão */}
+        {!errorClientes && !loadingClientes && clientesAPI && (
+          <Alert className="mb-4 border-green-200 bg-green-50">
+            <AlertCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              🟢 Conectado ao Supabase! {clientesAPI.length} clientes disponíveis.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {(errorClientes || errorTipos) && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Erro ao carregar dados. Usando dados de exemplo.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Card Principal do Formulário */}
         <Card className="border-border rounded-lg shadow-sm">
@@ -78,11 +119,18 @@ export function CreateOSPage({ onCancel, onCreate }: CreateOSPageProps) {
                     <SelectValue placeholder="Selecione na lista..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {tiposOS.map((tipo) => (
-                      <SelectItem key={tipo.id} value={tipo.id}>
-                        {tipo.label}
-                      </SelectItem>
-                    ))}
+                    {loadingTipos ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                        <span className="text-xs">Carregando tipos...</span>
+                      </div>
+                    ) : (
+                      tiposDisponiveis.map((tipo: any) => (
+                        <SelectItem key={tipo.id} value={tipo.id}>
+                          {tipo.label}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -128,24 +176,33 @@ export function CreateOSPage({ onCancel, onCreate }: CreateOSPageProps) {
                         <Command>
                           <CommandInput placeholder="Buscar cliente..." />
                           <CommandList>
-                            <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
-                            <CommandGroup>
-                              {mockClientes.map((cliente) => (
-                                <CommandItem
-                                  key={cliente.id}
-                                  value={cliente.nome}
-                                  onSelect={() => {
-                                    setClienteId(cliente.id);
-                                    setOpenClienteCombobox(false);
-                                  }}
-                                >
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{cliente.nome}</span>
-                                    <span className="text-xs text-muted-foreground">CNPJ: {cliente.cnpj}</span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
+                            {loadingClientes ? (
+                              <div className="p-4 text-center">
+                                <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                                <span className="text-xs text-muted-foreground">Carregando...</span>
+                              </div>
+                            ) : (
+                              <>
+                                <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                                <CommandGroup>
+                                  {clientesDisponiveis.map((cliente: any) => (
+                                    <CommandItem
+                                      key={cliente.id}
+                                      value={cliente.nome}
+                                      onSelect={() => {
+                                        setClienteId(cliente.id);
+                                        setOpenClienteCombobox(false);
+                                      }}
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{cliente.nome}</span>
+                                        <span className="text-xs text-muted-foreground">CNPJ: {cliente.cnpj}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </>
+                            )}
                           </CommandList>
                         </Command>
                       </PopoverContent>

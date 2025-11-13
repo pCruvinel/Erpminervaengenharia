@@ -7,7 +7,9 @@ import {
   Calendar, 
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bug,
+  UserPlus
 } from 'lucide-react';
 import { MinervaLogo } from './minerva-logo';
 
@@ -25,6 +27,11 @@ const menuItems = [
   { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
   { id: 'calendario', label: 'Calendário', icon: Calendar },
   { id: 'configuracoes', label: 'Configurações', icon: Settings },
+];
+
+const debugItems = [
+  { id: 'debug-schema', label: 'Debug Schema', icon: Bug },
+  { id: 'seed-usuarios', label: 'Seed Usuários', icon: UserPlus },
 ];
 
 export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse }: SidebarProps) {
@@ -50,6 +57,32 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse }
               key={item.id}
               onClick={() => onNavigate(item.id)}
               className={`minerva-sidebar-item ${isActive ? 'active' : ''}`}
+            >
+              <Icon className="minerva-sidebar-item-icon" />
+              {!collapsed && <span className="minerva-sidebar-item-text">{item.label}</span>}
+            </button>
+          );
+        })}
+        
+        {/* Separator */}
+        {!collapsed && (
+          <div className="px-4 py-2 mt-4">
+            <div className="border-t border-neutral-200"></div>
+            <p className="text-xs text-neutral-500 mt-2">Debug</p>
+          </div>
+        )}
+        
+        {/* Debug Items */}
+        {debugItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = currentPage === item.id;
+          
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={`minerva-sidebar-item ${isActive ? 'active' : ''}`}
+              title={collapsed ? item.label : undefined}
             >
               <Icon className="minerva-sidebar-item-icon" />
               {!collapsed && <span className="minerva-sidebar-item-text">{item.label}</span>}

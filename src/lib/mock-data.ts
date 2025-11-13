@@ -1,4 +1,15 @@
-// Mock data for development
+/**
+ * MOCK DATA - Dados de desenvolvimento
+ * 
+ * ⚠️ IMPORTANTE: Estes dados estão sendo gradualmente migrados para o Supabase.
+ * Para usar dados reais da API, importe de /lib/api-client.ts
+ * 
+ * Migração em progresso:
+ * - ✅ Clientes/Leads: usar clientesAPI.list()
+ * - ✅ Ordens de Serviço: usar ordensServicoAPI.list()
+ * - ✅ Tipos de OS: usar tiposOSAPI.list()
+ * - ⏳ Demais entidades em desenvolvimento
+ */
 import { User, OrdemServico, Comentario, Documento, HistoricoItem } from './types';
 
 // Tipos de OS disponíveis (RF-017)
@@ -208,6 +219,14 @@ export const mockUsers: User[] = [
     avatar: 'AC',
     role: 'diretoria',
     setor: 'assessoria'
+  },
+  {
+    id: '5',
+    name: 'Carlos Diretor',
+    email: 'diretoria@minerva.com',
+    avatar: 'CD',
+    role: 'diretoria',
+    setor: 'adm'
   }
 ];
 

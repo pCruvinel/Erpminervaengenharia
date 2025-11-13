@@ -15,7 +15,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { OrdemServico, Comentario, Documento, HistoricoItem } from '@/lib/types';
-import { toast } from 'sonner@2.0.3';
+import { toast } from '../../lib/utils/safe-toast';
 
 interface OSDetailsPageProps {
   ordemServico: OrdemServico;

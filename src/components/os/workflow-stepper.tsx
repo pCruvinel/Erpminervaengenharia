@@ -24,6 +24,8 @@ export interface WorkflowStepperProps {
   onStepClick?: (stepId: number) => void;
   /** Classes adicionais para o container */
   className?: string;
+  /** Array de IDs de etapas concluídas */
+  completedSteps: number[];
 }
 
 /**
@@ -45,7 +47,8 @@ export interface WorkflowStepperProps {
  * 
  * <WorkflowStepper 
  *   steps={steps} 
- *   currentStep={1} 
+ *   currentStep={2}
+ *   completedSteps={[1]}
  *   onStepClick={(stepId) => console.log(`Navegando para etapa ${stepId}`)}
  * />
  * ```
@@ -54,7 +57,8 @@ export function WorkflowStepper({
   steps, 
   currentStep, 
   onStepClick,
-  className 
+  className,
+  completedSteps = [] // Valor padrão para evitar erro
 }: WorkflowStepperProps) {
   
   const handleStepClick = (stepId: number, isAccessible: boolean) => {
@@ -68,9 +72,9 @@ export function WorkflowStepper({
       <div className="w-full flex items-center">
         {steps.map((step, index) => {
           // Lógica de estado baseada na etapa atual
-          const isCompleted = step.id < currentStep;
+          const isCompleted = completedSteps.includes(step.id); // Usar completedSteps para determinar se está concluída
           const isCurrent = step.id === currentStep;
-          const isAccessible = step.id <= currentStep; // Permite acessar etapas até a atual
+          const isAccessible = isCompleted || isCurrent; // Permite acessar etapas concluídas OU a atual
           
           return (
             <React.Fragment key={step.id}>

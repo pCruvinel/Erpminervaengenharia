@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { PrimaryButton } from '../ui/primary-button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Checkbox } from '../ui/checkbox';
+import { Switch } from '../ui/switch';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { 
   Upload, 
@@ -19,18 +20,24 @@ import {
   Calendar,
   Send,
   ChevronLeft,
-  Plus,
   Download,
+  AlertCircle,
   Trash2,
-  AlertCircle
+  Loader2
 } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import { mockLeads } from '../../lib/mock-data';
 import { WorkflowStepper, WorkflowStep } from './workflow-stepper';
 import { WorkflowFooter } from './workflow-footer';
 import { StepIdentificacaoLeadCompleto } from './steps/shared/step-identificacao-lead-completo';
+import { StepMemorialEscopo } from './steps/shared/step-memorial-escopo';
+import { StepPrecificacao } from './steps/shared/step-precificacao';
+import { StepGerarPropostaOS0104 } from './steps/shared/step-gerar-proposta-os01-04';
+import { useEtapas } from '../../lib/hooks/use-etapas';
+import { ordensServicoAPI, clientesAPI } from '../../lib/api-client';
+import { toast } from '../../lib/utils/safe-toast';
+import { ErrorBoundary } from '../error-boundary';
 
-// Definição das 16 etapas do fluxo OS 01-04
+// Definição das 15 etapas do fluxo OS 01-04
 const steps: WorkflowStep[] = [
   { id: 1, title: 'Identificação do Cliente/Lead', short: 'Lead', responsible: 'ADM', status: 'active' },
   { id: 2, title: 'Seleção do Tipo de OS', short: 'Tipo OS', responsible: 'ADM', status: 'pending' },
@@ -38,27 +45,48 @@ const steps: WorkflowStep[] = [
   { id: 4, title: 'Agendar Visita Técnica', short: 'Agendar', responsible: 'ADM', status: 'pending' },
   { id: 5, title: 'Realizar Visita', short: 'Visita', responsible: 'Obras', status: 'pending' },
   { id: 6, title: 'Follow-up 2 (Pós-Visita)', short: 'Follow-up 2', responsible: 'Obras', status: 'pending' },
-  { id: 7, title: 'Fazer Memorial (Upload)', short: 'Memorial', responsible: 'Obras', status: 'pending' },
-  { id: 8, title: 'Formulário Memorial (Escopo)', short: 'Escopo', responsible: 'Obras', status: 'pending' },
-  { id: 9, title: 'Precificação', short: 'Precificação', responsible: 'Obras', status: 'pending' },
-  { id: 10, title: 'Gerar Proposta Comercial', short: 'Proposta', responsible: 'ADM', status: 'pending' },
-  { id: 11, title: 'Agendar Visita (Apresentação)', short: 'Agendar', responsible: 'ADM', status: 'pending' },
-  { id: 12, title: 'Realizar Visita (Apresentação)', short: 'Apresentação', responsible: 'ADM', status: 'pending' },
-  { id: 13, title: 'Follow-up 3 (Pós-Apresentação)', short: 'Follow-up 3', responsible: 'ADM', status: 'pending' },
-  { id: 14, title: 'Gerar Contrato (Upload)', short: 'Contrato', responsible: 'ADM', status: 'pending' },
-  { id: 15, title: 'Contrato Assinado', short: 'Assinatura', responsible: 'ADM', status: 'pending' },
-  { id: 16, title: 'Iniciar Contrato de Obra', short: 'Início Obra', responsible: 'Sistema', status: 'pending' },
+  { id: 7, title: 'Formulário Memorial (Escopo)', short: 'Escopo', responsible: 'Obras', status: 'pending' },
+  { id: 8, title: 'Precificação', short: 'Precificação', responsible: 'Obras', status: 'pending' },
+  { id: 9, title: 'Gerar Proposta Comercial', short: 'Proposta', responsible: 'ADM', status: 'pending' },
+  { id: 10, title: 'Agendar Visita (Apresentação)', short: 'Agendar', responsible: 'ADM', status: 'pending' },
+  { id: 11, title: 'Realizar Visita (Apresentação)', short: 'Apresentação', responsible: 'ADM', status: 'pending' },
+  { id: 12, title: 'Follow-up 3 (Pós-Apresentação)', short: 'Follow-up 3', responsible: 'ADM', status: 'pending' },
+  { id: 13, title: 'Gerar Contrato (Upload)', short: 'Contrato', responsible: 'ADM', status: 'pending' },
+  { id: 14, title: 'Contrato Assinado', short: 'Assinatura', responsible: 'ADM', status: 'pending' },
+  { id: 15, title: 'Iniciar Contrato de Obra', short: 'Início Obra', responsible: 'Sistema', status: 'pending' },
 ];
 
 interface OSDetailsWorkflowPageProps {
   onBack?: () => void;
+  osId?: string; // ID da OS sendo editada
 }
 
-export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {}) {
+export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkflowPageProps = {}) {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
   const [showLeadCombobox, setShowLeadCombobox] = useState(false);
   const [showNewLeadDialog, setShowNewLeadDialog] = useState(false);
+  
+  // Estado interno para armazenar osId criada (diferente da prop osIdProp)
+  const [internalOsId, setInternalOsId] = useState<string | null>(null);
+  
+  // Estado de loading para criação de OS (Etapa 2 → 3)
+  const [isCreatingOS, setIsCreatingOS] = useState(false);
+  
+  // Usar osIdProp (editando OS existente) ou internalOsId (criando nova OS)
+  const osId = osIdProp || internalOsId;
+  
+  // Hook para gerenciar etapas
+  const { etapas, isLoading, fetchEtapas, createEtapa, updateEtapa, saveFormData } = useEtapas();
+  
+  // Calcular quais etapas estão concluídas (status = APROVADA)
+  const completedSteps = useMemo(() => {
+    if (!etapas || etapas.length === 0) return [];
+    
+    return etapas
+      .filter((etapa: any) => etapa.status === 'APROVADA')
+      .map((etapa: any) => etapa.numero_etapa);
+  }, [etapas]);
   
   // Estados dos formulários de cada etapa
   const [etapa1Data, setEtapa1Data] = useState({ leadId: '' });
@@ -93,7 +121,6 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
     servicoResolver: '',
     arquivosGerais: [] as Array<{ file: File; comment: string }>,
   });
-  const [etapa7Data, setEtapa7Data] = useState({ memorialFile: null as File | null });
   const [etapa8Data, setEtapa8Data] = useState({
     objetivo: '',
     etapasPrincipais: [] as Array<{
@@ -116,7 +143,13 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
     percentualEntrada: '',
     numeroParcelas: '',
   });
-  const [etapa10Data, setEtapa10Data] = useState({});
+  const [etapa10Data, setEtapa10Data] = useState({
+    propostaGerada: false,
+    dataGeracao: '',
+    codigoProposta: '',
+    validadeDias: '',
+    garantiaMeses: '',
+  });
   const [etapa11Data, setEtapa11Data] = useState({ dataAgendamento: '' });
   const [etapa12Data, setEtapa12Data] = useState({ apresentacaoRealizada: false });
   const [etapa13Data, setEtapa13Data] = useState({
@@ -157,10 +190,36 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
     estado: '',
   });
 
-  // Calcular selectedLead de forma memoizada para evitar re-renders
-  const selectedLead = useMemo(() => {
-    return mockLeads.find(l => l.id === selectedLeadId);
-  }, [selectedLeadId]);
+  // Cálculos de precificação (memoizados)
+  const valoresPrecificacao = useMemo(() => {
+    // Custo Base (soma dos totais das sub-etapas)
+    const custoBase = etapa8Data.etapasPrincipais.reduce((total, etapa) => {
+      return total + etapa.subetapas.reduce((subtotal, sub) => {
+        return subtotal + (parseFloat(sub.total) || 0);
+      }, 0);
+    }, 0);
+
+    // Percentuais
+    const percImprevisto = parseFloat(etapa9Data.percentualImprevisto) || 0;
+    const percLucro = parseFloat(etapa9Data.percentualLucro) || 0;
+    const percImposto = parseFloat(etapa9Data.percentualImposto) || 0;
+    const percEntrada = parseFloat(etapa9Data.percentualEntrada) || 0;
+    const numParcelas = parseFloat(etapa9Data.numeroParcelas) || 1;
+
+    // Valor Total
+    const valorTotal = custoBase * (1 + (percImprevisto + percLucro + percImposto) / 100);
+
+    // Entrada e Parcelas
+    const valorEntrada = valorTotal * (percEntrada / 100);
+    const valorParcela = (valorTotal - valorEntrada) / numParcelas;
+
+    return {
+      custoBase,
+      valorTotal,
+      valorEntrada,
+      valorParcela,
+    };
+  }, [etapa8Data.etapasPrincipais, etapa9Data]);
 
   const handleStepClick = (stepId: number) => {
     // Permite navegar apenas para etapas até a atual
@@ -170,37 +229,25 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
   };
 
   const handleSelectLead = (leadId: string) => {
-    setSelectedLeadId(leadId);
-    setEtapa1Data({ leadId });
-    
-    // Preencher formData com dados do lead selecionado
-    const lead = mockLeads.find(l => l.id === leadId);
-    if (lead) {
-      setFormData({
-        nome: lead.nome || '',
-        cpfCnpj: lead.cpfCnpj || '',
-        tipo: lead.tipo || '',
-        nomeResponsavel: '',
-        cargoResponsavel: '',
-        telefone: lead.telefone || '',
-        email: lead.email || '',
-        tipoEdificacao: lead.tipoEdificacao || '',
-        qtdUnidades: lead.qtdUnidades || '',
-        qtdBlocos: lead.qtdBlocos || '',
-        qtdPavimentos: '',
-        tipoTelhado: lead.tipoTelhado || '',
-        possuiElevador: false,
-        possuiPiscina: false,
-        cep: '',
-        endereco: lead.endereco || '',
-        numero: '',
-        complemento: '',
-        bairro: '',
-        cidade: '',
-        estado: '',
-      });
+    try {
+      console.log('🎯 handleSelectLead chamado com ID:', leadId);
+      
+      // Validar leadId
+      if (!leadId || typeof leadId !== 'string') {
+        console.error('❌ leadId inválido:', leadId);
+        return;
+      }
+      
+      setSelectedLeadId(leadId);
+      setEtapa1Data({ leadId });
+      
+      console.log('✅ Lead ID salvo com sucesso:', leadId);
+      // Nota: O formData é preenchido pelo componente StepIdentificacaoLeadCompleto
+      // quando um lead é selecionado do banco de dados
+    } catch (error) {
+      console.error('❌ Erro ao selecionar lead:', error);
+      // NÃO usar toast aqui para evitar erro do Sonner
     }
-    setShowLeadCombobox(false);
   };
 
   const handleSaveNewLead = () => {
@@ -212,12 +259,406 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
     setEtapa1Data({ leadId: 'NEW' });
   };
 
-  const handleNextStep = () => {
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
+  /**
+   * Mapear nome do tipo de OS para código do banco
+   */
+  const mapearTipoOSParaCodigo = (nomeOS: string): string => {
+    const mapeamento: Record<string, string> = {
+      'OS 01: Perícia de Fachada': 'OS-01',
+      'OS 02: Revitalização de Fachada': 'OS-02',
+      'OS 03: Reforço Estrutural': 'OS-03',
+      'OS 04: Outros': 'OS-04',
+    };
+    return mapeamento[nomeOS] || 'OS-01';
+  };
+
+  /**
+   * Criar OS e todas as 15 etapas no banco
+   */
+  const criarOSComEtapas = async (): Promise<string> => {
+    try {
+      console.log('🚀 Iniciando criação da OS...');
+      
+      // 1. Validar dados obrigatórios
+      if (!etapa1Data.leadId) {
+        throw new Error('Lead não selecionado');
+      }
+      
+      if (!etapa2Data.tipoOS) {
+        throw new Error('Tipo de OS não selecionado');
+      }
+
+      // 2. Buscar nome do cliente para a descrição
+      let nomeCliente = 'Cliente';
+      try {
+        const cliente = await clientesAPI.getById(etapa1Data.leadId);
+        nomeCliente = cliente.nome_razao_social || cliente.nome || 'Cliente';
+      } catch (error) {
+        console.warn('⚠️ Não foi possível buscar nome do cliente, usando nome genérico');
+      }
+
+      // 3. Buscar UUID do tipo de OS pelo código
+      console.log('🔍 Buscando tipo de OS...');
+      const codigoTipoOS = mapearTipoOSParaCodigo(etapa2Data.tipoOS);
+      const tiposOS = await ordensServicoAPI.getTiposOS();
+      const tipoOSEncontrado = tiposOS.find((t: any) => t.codigo === codigoTipoOS);
+      
+      if (!tipoOSEncontrado) {
+        throw new Error(`Tipo de OS não encontrado: ${codigoTipoOS}`);
+      }
+
+      console.log('✅ Tipo de OS encontrado:', tipoOSEncontrado);
+
+      // 4. Criar OS no banco
+      console.log('📝 Criando OS no banco...');
+      const novaOS = await ordensServicoAPI.create({
+        cliente_id: etapa1Data.leadId,
+        tipo_os_id: tipoOSEncontrado.id,
+        descricao: `${etapa2Data.tipoOS} - ${nomeCliente}`,
+        // criado_por_id será preenchido automaticamente pelo servidor com colaborador "Sistema"
+        status_geral: 'EM_ANDAMENTO', // Novo padrão: MAIÚSCULAS + SNAKE_CASE
+      });
+
+      console.log('✅ OS criada:', novaOS);
+      try {
+        toast.success(`OS ${novaOS.codigo_os} criada com sucesso!`);
+      } catch (toastError) {
+        console.error('❌ Erro ao exibir toast de sucesso (OS criada):', toastError);
+      }
+
+      // 5. Criar as 15 etapas
+      console.log('📋 Criando 15 etapas...');
+      const etapasCriadas = [];
+      
+      for (let i = 1; i <= 15; i++) {
+        const statusEtapa = i <= 2 ? 'APROVADA' : (i === 3 ? 'EM_ANDAMENTO' : 'PENDENTE'); // Novo padrão: MAIÚSCULAS + SNAKE_CASE
+        
+        let dadosEtapa = {};
+        if (i === 1) {
+          dadosEtapa = { leadId: etapa1Data.leadId };
+        } else if (i === 2) {
+          dadosEtapa = { tipoOS: etapa2Data.tipoOS };
+        }
+
+        const etapa = await createEtapa(novaOS.id, {
+          ordem: i,
+          nome_etapa: steps[i - 1].title,
+          status: statusEtapa,
+          dados_etapa: dadosEtapa,
+        });
+        
+        etapasCriadas.push(etapa);
+        console.log(`✅ Etapa ${i}/15 criada: ${etapa.nome_etapa}`);
+      }
+
+      console.log(`✅ Todas as 15 etapas criadas com sucesso!`);
+      
+      return novaOS.id;
+    } catch (error) {
+      console.error('❌ Erro ao criar OS:', error);
+      throw error;
     }
   };
 
+  // Carregar etapas ao montar o componente (se osIdProp fornecido - modo edição)
+  useEffect(() => {
+    if (osIdProp && osIdProp.trim() !== '') {
+      console.log(`📋 Modo Edição: Carregando etapas da OS ${osIdProp}...`);
+      loadEtapas();
+    } else {
+      console.log('ℹ️ Modo Criação: osId não fornecido, OS será criada ao avançar da etapa 2 para 3');
+    }
+  }, [osIdProp]);
+
+  /**
+   * Carregar etapas do banco e preencher estados locais
+   */
+  const loadEtapas = async () => {
+    if (!osId || osId.trim() === '') {
+      console.warn('⚠️ loadEtapas: osId inválido ou vazio');
+      return;
+    }
+    
+    try {
+      await fetchEtapas(osId);
+      console.log('✅ Etapas carregadas:', etapas);
+      
+      // Preencher estados locais com dados do banco
+      if (etapas) {
+        etapas.forEach((etapa) => {
+          if (etapa.dados_etapa) {
+            switch (etapa.ordem) {
+              case 1:
+                setEtapa1Data(etapa.dados_etapa);
+                break;
+              case 2:
+                setEtapa2Data(etapa.dados_etapa);
+                break;
+              case 3:
+                setEtapa3Data(etapa.dados_etapa);
+                break;
+              case 4:
+                setEtapa4Data(etapa.dados_etapa);
+                break;
+              case 5:
+                setEtapa5Data(etapa.dados_etapa);
+                break;
+              case 6:
+                setEtapa6Data(etapa.dados_etapa);
+                break;
+              case 8:
+                setEtapa8Data(etapa.dados_etapa);
+                break;
+              case 9:
+                setEtapa9Data(etapa.dados_etapa);
+                break;
+              case 10:
+                setEtapa10Data(etapa.dados_etapa);
+                break;
+              case 11:
+                setEtapa11Data(etapa.dados_etapa);
+                break;
+              case 12:
+                setEtapa12Data(etapa.dados_etapa);
+                break;
+              case 13:
+                setEtapa13Data(etapa.dados_etapa);
+                break;
+              case 14:
+                setEtapa14Data(etapa.dados_etapa);
+                break;
+              case 15:
+                setEtapa15Data(etapa.dados_etapa);
+                break;
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar etapas:', error);
+      try {
+        toast.error('Erro ao carregar dados das etapas');
+      } catch (toastError) {
+        console.error('❌ Erro ao exibir toast de erro (fetchEtapas):', toastError);
+      }
+    }
+  };
+
+  /**
+   * Obter dados da etapa atual
+   */
+  const getCurrentStepData = () => {
+    switch (currentStep) {
+      case 1: return etapa1Data;
+      case 2: return etapa2Data;
+      case 3: return etapa3Data;
+      case 4: return etapa4Data;
+      case 5: return etapa5Data;
+      case 6: return etapa6Data;
+      case 8: return etapa8Data;
+      case 9: return etapa9Data;
+      case 10: return etapa10Data;
+      case 11: return etapa11Data;
+      case 12: return etapa12Data;
+      case 13: return etapa13Data;
+      case 14: return etapa14Data;
+      case 15: return etapa15Data;
+      default: return {};
+    }
+  };
+
+  /**
+   * Validar campos obrigatórios da etapa atual
+   * @returns true se válido, false se há campos faltando
+   */
+  const validateCurrentStep = (): boolean => {
+    switch (currentStep) {
+      case 1: // Identificação do Lead
+        return !!etapa1Data.leadId;
+      
+      case 2: // Seleção do Tipo de OS
+        return !!etapa2Data.tipoOS;
+      
+      case 3: // Follow-up 1
+        return !!(
+          etapa3Data.idadeEdificacao &&
+          etapa3Data.motivoProcura &&
+          etapa3Data.quandoAconteceu &&
+          etapa3Data.grauUrgencia &&
+          etapa3Data.apresentacaoProposta &&
+          etapa3Data.nomeContatoLocal &&
+          etapa3Data.telefoneContatoLocal
+        );
+      // Adicionar validações para outras etapas conforme necessário
+      default:
+        return true; // Etapas sem validação específica
+    }
+  };
+
+  /**
+   * Salvar dados da etapa no banco
+   */
+  const saveCurrentStepData = async (markAsComplete: boolean = true) => {
+    if (!osId || !etapas) {
+      console.warn('⚠️ Não é possível salvar: osId ou etapas não disponíveis');
+      return;
+    }
+
+    try {
+      const etapaAtual = etapas.find((e) => e.ordem === currentStep);
+      
+      if (!etapaAtual) {
+        console.warn(`⚠️ Etapa ${currentStep} não encontrada no banco`);
+        try {
+          toast.error('Etapa não encontrada');
+        } catch (toastError) {
+          console.error('❌ Erro ao exibir toast (etapa não encontrada):', toastError);
+        }
+        return;
+      }
+
+      console.log(`💾 Salvando etapa ${currentStep}...`);
+      
+      await saveFormData(
+        etapaAtual.id,
+        getCurrentStepData(),
+        markAsComplete
+      );
+
+      const successMessage = markAsComplete 
+        ? 'Etapa concluída e dados salvos!' 
+        : 'Rascunho salvo com sucesso!';
+      
+      try {
+        toast.success(successMessage);
+      } catch (toastError) {
+        console.error('❌ Erro ao exibir toast de sucesso (saveStep):', toastError);
+      }
+      console.log(`✅ ${successMessage}`);
+    } catch (error) {
+      console.error('❌ Erro ao salvar etapa:', error);
+      try {
+        toast.error('Erro ao salvar dados. Tente novamente.');
+      } catch (toastError) {
+        console.error('❌ Erro ao exibir toast de erro (saveStep):', toastError);
+      }
+      throw error;
+    }
+  };
+
+  /**
+   * Salvar rascunho (sem validação, sem avançar)
+   */
+  const handleSaveRascunho = async () => {
+    try {
+      await saveCurrentStepData(false);
+    } catch (error) {
+      // Erro já tratado em saveCurrentStepData
+    }
+  };
+
+  /**
+   * Avançar para próxima etapa (com validação e salvamento)
+   */
+  const handleNextStep = async () => {
+    // ========================================
+    // CASO ESPECIAL: Etapa 2 → 3 (Criar OS)
+    // ========================================
+    if (currentStep === 2 && !osId) {
+      // Validar dados obrigatórios das etapas 1 e 2
+      if (!etapa1Data.leadId) {
+        try {
+          toast.error('Selecione um lead antes de continuar');
+        } catch (toastError) {
+          console.error('❌ Erro ao exibir toast de validação (lead):', toastError);
+        }
+        return;
+      }
+      
+      if (!etapa2Data.tipoOS) {
+        try {
+          toast.error('Selecione o tipo de OS antes de continuar');
+        } catch (toastError) {
+          console.error('❌ Erro ao exibir toast de validação (tipoOS):', toastError);
+        }
+        return;
+      }
+
+      try {
+        // Ativar loading state
+        setIsCreatingOS(true);
+        
+        console.log('🚀 Iniciando criação de OS no Supabase...');
+        
+        // Criar OS e 15 etapas no banco
+        const novaOsId = await criarOSComEtapas();
+        
+        console.log('✅ OS criada com sucesso! ID:', novaOsId);
+        
+        // Salvar osId no estado interno
+        setInternalOsId(novaOsId);
+        
+        // Recarregar etapas do banco
+        console.log('📋 Carregando etapas...');
+        await fetchEtapas(novaOsId);
+        
+        // Avançar para etapa 3
+        setCurrentStep(3);
+        
+        try {
+          toast.success('Agora você pode preencher o Follow-up 1!');
+        } catch (toastError) {
+          console.error('❌ Erro ao exibir toast de sucesso:', toastError);
+        }
+        
+      } catch (error) {
+        console.error('❌ Erro ao criar OS:', error);
+        try {
+          toast.error('Erro ao criar Ordem de Serviço. Tente novamente.');
+        } catch (toastError) {
+          console.error('❌ Erro ao exibir toast de erro:', toastError);
+        }
+      } finally {
+        // Desativar loading state
+        setIsCreatingOS(false);
+      }
+      
+      return;
+    }
+
+    // ========================================
+    // CASO NORMAL: Outras transições de etapa
+    // ========================================
+    
+    // Validar campos obrigatórios
+    if (!validateCurrentStep()) {
+      try {
+        toast.error('Preencha todos os campos obrigatórios antes de avançar');
+      } catch (toastError) {
+        console.error('❌ Erro ao exibir toast de validação (campos):', toastError);
+      }
+      return;
+    }
+
+    // Salvar dados da etapa atual
+    try {
+      if (osId) {
+        await saveCurrentStepData(true);
+      }
+      
+      // Avançar para próxima etapa
+      if (currentStep < steps.length) {
+        setCurrentStep(currentStep + 1);
+      }
+    } catch (error) {
+      // Não avança se houver erro ao salvar
+      console.error('❌ Não foi possível avançar devido a erro ao salvar');
+    }
+  };
+
+  /**
+   * Voltar para etapa anterior (sem salvar)
+   */
   const handlePrevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -225,83 +666,6 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
   };
 
   const isReadOnly = selectedLeadId !== 'NEW' && selectedLeadId !== '';
-
-  // Cálculos automáticos Etapa 8
-  const calcularExecucaoTotal = () => {
-    return etapa8Data.etapasPrincipais.reduce((total, etapa) => {
-      return total + etapa.subetapas.reduce((sum, sub) => sum + (parseFloat(sub.diasUteis) || 0), 0);
-    }, 0);
-  };
-
-  // Cálculos automáticos Etapa 9
-  const calcularCustoBase = () => {
-    return etapa8Data.etapasPrincipais.reduce((total, etapa) => {
-      return total + etapa.subetapas.reduce((sum, sub) => sum + (parseFloat(sub.total) || 0), 0);
-    }, 0);
-  };
-
-  const calcularValorAtual = () => {
-    const custoBase = calcularCustoBase();
-    const imprevisto = parseFloat(etapa9Data.percentualImprevisto) || 0;
-    const lucro = parseFloat(etapa9Data.percentualLucro) || 0;
-    const imposto = parseFloat(etapa9Data.percentualImposto) || 0;
-    return custoBase * (1 + (imprevisto + lucro + imposto) / 100);
-  };
-
-  const calcularValorEntrada = () => {
-    const valorAtual = calcularValorAtual();
-    const percentualEntrada = parseFloat(etapa9Data.percentualEntrada) || 0;
-    return valorAtual * (percentualEntrada / 100);
-  };
-
-  const calcularValorParcela = () => {
-    const valorAtual = calcularValorAtual();
-    const valorEntrada = calcularValorEntrada();
-    const numeroParcelas = parseInt(etapa9Data.numeroParcelas) || 1;
-    return (valorAtual - valorEntrada) / numeroParcelas;
-  };
-
-  const adicionarEtapaPrincipal = () => {
-    setEtapa8Data({
-      ...etapa8Data,
-      etapasPrincipais: [
-        ...etapa8Data.etapasPrincipais,
-        { nome: '', subetapas: [] }
-      ]
-    });
-  };
-
-  const adicionarSubetapa = (index: number) => {
-    const novasEtapas = [...etapa8Data.etapasPrincipais];
-    novasEtapas[index].subetapas.push({ nome: '', m2: '', diasUteis: '', total: '' });
-    setEtapa8Data({ ...etapa8Data, etapasPrincipais: novasEtapas });
-  };
-
-  const removerEtapaPrincipal = (index: number) => {
-    const novasEtapas = etapa8Data.etapasPrincipais.filter((_, i) => i !== index);
-    setEtapa8Data({ ...etapa8Data, etapasPrincipais: novasEtapas });
-  };
-
-  const removerSubetapa = (etapaIndex: number, subIndex: number) => {
-    const novasEtapas = [...etapa8Data.etapasPrincipais];
-    novasEtapas[etapaIndex].subetapas = novasEtapas[etapaIndex].subetapas.filter((_, i) => i !== subIndex);
-    setEtapa8Data({ ...etapa8Data, etapasPrincipais: novasEtapas });
-  };
-
-  const atualizarEtapaPrincipal = (index: number, nome: string) => {
-    const novasEtapas = [...etapa8Data.etapasPrincipais];
-    novasEtapas[index].nome = nome;
-    setEtapa8Data({ ...etapa8Data, etapasPrincipais: novasEtapas });
-  };
-
-  const atualizarSubetapa = (etapaIndex: number, subIndex: number, campo: string, valor: string) => {
-    const novasEtapas = [...etapa8Data.etapasPrincipais];
-    novasEtapas[etapaIndex].subetapas[subIndex] = {
-      ...novasEtapas[etapaIndex].subetapas[subIndex],
-      [campo]: valor
-    };
-    setEtapa8Data({ ...etapa8Data, etapasPrincipais: novasEtapas });
-  };
 
   return (
     <div className="h-screen flex flex-col bg-neutral-50">
@@ -320,6 +684,7 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
         steps={steps}
         currentStep={currentStep}
         onStepClick={handleStepClick}
+        completedSteps={completedSteps}
       />
 
       {/* Main Content Area */}
@@ -343,22 +708,37 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
               
               {/* ETAPA 1: Identificação do Cliente/Lead */}
               {currentStep === 1 && (
-                <StepIdentificacaoLeadCompleto
-                  selectedLeadId={selectedLeadId}
-                  onSelectLead={handleSelectLead}
-                  showCombobox={showLeadCombobox}
-                  onShowComboboxChange={setShowLeadCombobox}
-                  showNewLeadDialog={showNewLeadDialog}
-                  onShowNewLeadDialogChange={setShowNewLeadDialog}
-                  formData={formData}
-                  onFormDataChange={setFormData}
-                  onSaveNewLead={handleSaveNewLead}
-                />
+                <ErrorBoundary>
+                  <StepIdentificacaoLeadCompleto
+                    selectedLeadId={selectedLeadId}
+                    onSelectLead={handleSelectLead}
+                    showCombobox={showLeadCombobox}
+                    onShowComboboxChange={setShowLeadCombobox}
+                    showNewLeadDialog={showNewLeadDialog}
+                    onShowNewLeadDialogChange={setShowNewLeadDialog}
+                    formData={formData}
+                    onFormDataChange={setFormData}
+                    onSaveNewLead={handleSaveNewLead}
+                  />
+                </ErrorBoundary>
               )}
 
               {/* ETAPA 2: Seleção do Tipo de OS */}
               {currentStep === 2 && (
-                <div className="space-y-6">
+                <div className="space-y-6 relative">
+                  {/* Overlay de Loading */}
+                  {isCreatingOS && (
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <div className="text-center">
+                          <p className="font-medium">Criando Ordem de Serviço</p>
+                          <p className="text-sm text-muted-foreground">Aguarde enquanto criamos as 15 etapas no banco de dados...</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
@@ -373,6 +753,7 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                     <Select 
                       value={etapa2Data.tipoOS} 
                       onValueChange={(value) => setEtapa2Data({ tipoOS: value })}
+                      disabled={isCreatingOS}
                     >
                       <SelectTrigger id="tipoOS">
                         <SelectValue placeholder="Escolha o tipo de OS" />
@@ -653,11 +1034,13 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                       <p className="text-sm text-muted-foreground mb-4">
                         Marque a caixa abaixo para confirmar que a visita técnica foi realizada.
                       </p>
-                      <div className="flex items-center space-x-2 justify-center">
-                        <Checkbox
+                      <div className="flex items-center space-x-3 justify-center">
+                        <Switch
                           id="visitaRealizada"
                           checked={etapa5Data.visitaRealizada}
-                          onCheckedChange={(checked) => setEtapa5Data({ visitaRealizada: checked as boolean })}
+                          onCheckedChange={(checked) => {
+                            setEtapa5Data((prev) => ({ ...prev, visitaRealizada: checked }));
+                          }}
                         />
                         <Label htmlFor="visitaRealizada" className="cursor-pointer">
                           Visita técnica realizada
@@ -929,448 +1312,40 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                 </div>
               )}
 
-              {/* ETAPA 7: Fazer Memorial (Upload) */}
+              {/* ETAPA 7: Formulário Memorial (Escopo e Prazos) */}
               {currentStep === 7 && (
-                <div className="space-y-6">
-                  <Alert>
-                    <FileText className="h-4 w-4" />
-                    <AlertDescription>
-                      Faça upload do Memorial Descritivo de Custos (Excel/Word). Esta etapa é opcional, pois a próxima etapa permite digitalizar o memorial.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-2">
-                    <Label>Upload do Memorial Descritivo de Custos</Label>
-                    <div className="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                      <Upload className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mb-1">
-                        Clique para selecionar ou arraste o arquivo aqui
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        XLSX, DOCX, PDF (máx. 20MB)
-                      </p>
-                    </div>
-                  </div>
-
-                  {etapa7Data.memorialFile && (
-                    <Card className="bg-green-50 border-green-200">
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-green-600" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">Arquivo anexado:</p>
-                            <p className="text-sm text-muted-foreground">{etapa7Data.memorialFile.name}</p>
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                <StepMemorialEscopo
+                  data={etapa8Data}
+                  onDataChange={setEtapa8Data}
+                />
               )}
 
-              {/* ETAPA 8: Formulário Memorial (Escopo e Prazos) */}
+              {/* ETAPA 8: Precificação */}
               {currentStep === 8 && (
-                <div className="space-y-6">
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Digitalize o escopo técnico e prazos do memorial. Você pode adicionar múltiplas etapas e sub-etapas.
-                    </AlertDescription>
-                  </Alert>
-
-                  {/* 1. Objetivo */}
-                  <div className="space-y-2">
-                    <Label htmlFor="objetivo">
-                      1. Objetivo da contratação do serviço? <span className="text-destructive">*</span>
-                    </Label>
-                    <Textarea
-                      id="objetivo"
-                      rows={3}
-                      value={etapa8Data.objetivo}
-                      onChange={(e) => setEtapa8Data({ ...etapa8Data, objetivo: e.target.value })}
-                      placeholder="Descreva o objetivo principal do serviço..."
-                    />
-                  </div>
-
-                  <Separator />
-
-                  {/* 2. Etapas da Especificação Técnica */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base">2. Etapas da Especificação Técnica</Label>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={adicionarEtapaPrincipal}
-                        style={{ borderColor: '#06b6d4', color: '#06b6d4' }}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Etapa Principal
-                      </Button>
-                    </div>
-
-                    {etapa8Data.etapasPrincipais.length === 0 && (
-                      <Card className="bg-neutral-50 border-dashed">
-                        <CardContent className="pt-6 text-center text-sm text-muted-foreground">
-                          Nenhuma etapa adicionada. Clique em "Adicionar Etapa Principal" para começar.
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {etapa8Data.etapasPrincipais.map((etapa, etapaIndex) => (
-                      <Card key={etapaIndex} className="border-primary/20">
-                        <CardHeader className="bg-primary/5">
-                          <div className="flex items-center gap-3">
-                            <Input
-                              value={etapa.nome}
-                              onChange={(e) => atualizarEtapaPrincipal(etapaIndex, e.target.value)}
-                              placeholder={`Ex: ${etapaIndex + 1}. Tratamento de Fachada`}
-                              className="flex-1"
-                            />
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => adicionarSubetapa(etapaIndex)}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Sub-etapa
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => removerEtapaPrincipal(etapaIndex)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-4">
-                          {etapa.subetapas.length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                              Nenhuma sub-etapa. Clique em "Sub-etapa" para adicionar.
-                            </p>
-                          ) : (
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-5 gap-2 text-xs font-medium text-muted-foreground">
-                                <div className="col-span-2">Sub-etapa</div>
-                                <div>m²</div>
-                                <div>Dias úteis</div>
-                                <div>Total R$</div>
-                              </div>
-                              {etapa.subetapas.map((sub, subIndex) => (
-                                <div key={subIndex} className="grid grid-cols-5 gap-2">
-                                  <Input
-                                    value={sub.nome}
-                                    onChange={(e) => atualizarSubetapa(etapaIndex, subIndex, 'nome', e.target.value)}
-                                    placeholder="Descrição da sub-etapa"
-                                    className="col-span-2"
-                                  />
-                                  <Input
-                                    type="number"
-                                    value={sub.m2}
-                                    onChange={(e) => atualizarSubetapa(etapaIndex, subIndex, 'm2', e.target.value)}
-                                    placeholder="0"
-                                  />
-                                  <Input
-                                    type="number"
-                                    value={sub.diasUteis}
-                                    onChange={(e) => atualizarSubetapa(etapaIndex, subIndex, 'diasUteis', e.target.value)}
-                                    placeholder="0"
-                                  />
-                                  <div className="flex gap-2">
-                                    <Input
-                                      type="number"
-                                      value={sub.total}
-                                      onChange={(e) => atualizarSubetapa(etapaIndex, subIndex, 'total', e.target.value)}
-                                      placeholder="0,00"
-                                    />
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => removerSubetapa(etapaIndex, subIndex)}
-                                    >
-                                      <X className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-
-                  <Separator />
-
-                  {/* 3. Prazo (Dias Úteis) */}
-                  <div className="space-y-4">
-                    <Label className="text-base">3. Prazo (Dias Úteis)</Label>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="planejamentoInicial">
-                          Planejamento inicial <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="planejamentoInicial"
-                          type="number"
-                          value={etapa8Data.planejamentoInicial}
-                          onChange={(e) => setEtapa8Data({ ...etapa8Data, planejamentoInicial: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="logisticaTransporte">
-                          Logística e transporte de materiais <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="logisticaTransporte"
-                          type="number"
-                          value={etapa8Data.logisticaTransporte}
-                          onChange={(e) => setEtapa8Data({ ...etapa8Data, logisticaTransporte: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="preparacaoArea">
-                          Preparação de área de trabalho <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="preparacaoArea"
-                          type="number"
-                          value={etapa8Data.preparacaoArea}
-                          onChange={(e) => setEtapa8Data({ ...etapa8Data, preparacaoArea: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="execucaoObra">
-                          Execução de obra (calculado automaticamente)
-                        </Label>
-                        <Input
-                          id="execucaoObra"
-                          type="number"
-                          value={calcularExecucaoTotal()}
-                          disabled
-                          className="bg-neutral-100"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Soma automática dos dias úteis de todas as sub-etapas
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <StepPrecificacao
+                  etapa8Data={etapa8Data}
+                  etapa9Data={etapa9Data}
+                  onEtapa9DataChange={setEtapa9Data}
+                />
               )}
 
-              {/* ETAPA 9: Precificação */}
+              {/* ETAPA 9: Gerar Proposta Comercial */}
               {currentStep === 9 && (
-                <div className="space-y-6">
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Defina a precificação final com base nos custos do memorial. Os valores são calculados automaticamente.
-                    </AlertDescription>
-                  </Alert>
-
-                  {/* Custo Base */}
-                  <div className="space-y-2">
-                    <Label htmlFor="custoBase">Custo Base (Memorial)</Label>
-                    <Input
-                      id="custoBase"
-                      type="text"
-                      value={`R$ ${calcularCustoBase().toFixed(2).replace('.', ',')}`}
-                      disabled
-                      className="bg-neutral-100 text-lg"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Soma automática de todos os valores das sub-etapas do memorial
-                    </p>
-                  </div>
-
-                  <Separator />
-
-                  {/* Percentuais e Valor Total */}
-                  <div className="space-y-4">
-                    <Label className="text-base">Percentuais e Valor Total</Label>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="percentualImprevisto">
-                          % Imprevisto <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="percentualImprevisto"
-                          type="number"
-                          value={etapa9Data.percentualImprevisto}
-                          onChange={(e) => setEtapa9Data({ ...etapa9Data, percentualImprevisto: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="percentualLucro">
-                          % Lucro <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="percentualLucro"
-                          type="number"
-                          value={etapa9Data.percentualLucro}
-                          onChange={(e) => setEtapa9Data({ ...etapa9Data, percentualLucro: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="percentualImposto">
-                          % Imposto <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="percentualImposto"
-                          type="number"
-                          value={etapa9Data.percentualImposto}
-                          onChange={(e) => setEtapa9Data({ ...etapa9Data, percentualImposto: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="valorAtual">Valor Atual (Total)</Label>
-                        <Input
-                          id="valorAtual"
-                          type="text"
-                          value={`R$ ${calcularValorAtual().toFixed(2).replace('.', ',')}`}
-                          disabled
-                          className="bg-green-50 border-green-200 text-lg font-medium"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Condições de Pagamento */}
-                  <div className="space-y-4">
-                    <Label className="text-base">Condições de Pagamento</Label>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="percentualEntrada">
-                          % Entrada <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="percentualEntrada"
-                          type="number"
-                          value={etapa9Data.percentualEntrada}
-                          onChange={(e) => setEtapa9Data({ ...etapa9Data, percentualEntrada: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="numeroParcelas">
-                          Nº de Parcelas <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="numeroParcelas"
-                          type="number"
-                          value={etapa9Data.numeroParcelas}
-                          onChange={(e) => setEtapa9Data({ ...etapa9Data, numeroParcelas: e.target.value })}
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="valorEntrada">Valor de Entrada (Calculado)</Label>
-                        <Input
-                          id="valorEntrada"
-                          type="text"
-                          value={`R$ ${calcularValorEntrada().toFixed(2).replace('.', ',')}`}
-                          disabled
-                          className="bg-neutral-100"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="valorParcela">Valor de Cada Parcela (Calculado)</Label>
-                        <Input
-                          id="valorParcela"
-                          type="text"
-                          value={`R$ ${calcularValorParcela().toFixed(2).replace('.', ',')}`}
-                          disabled
-                          className="bg-neutral-100"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Resumo Financeiro */}
-                  <Card className="bg-primary/5 border-primary/20">
-                    <CardHeader>
-                      <CardTitle className="text-base">Resumo Financeiro</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Custo Base:</span>
-                        <span className="text-sm font-medium">R$ {calcularCustoBase().toFixed(2).replace('.', ',')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Valor Total da Proposta:</span>
-                        <span className="text-sm font-medium">R$ {calcularValorAtual().toFixed(2).replace('.', ',')}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Entrada:</span>
-                        <span className="text-sm font-medium">R$ {calcularValorEntrada().toFixed(2).replace('.', ',')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Parcelas:</span>
-                        <span className="text-sm font-medium">
-                          {etapa9Data.numeroParcelas}x de R$ {calcularValorParcela().toFixed(2).replace('.', ',')}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <StepGerarPropostaOS0104
+                  etapa1Data={formData}
+                  etapa2Data={etapa2Data}
+                  etapa7Data={etapa8Data}
+                  etapa8Data={etapa9Data}
+                  valorTotal={valoresPrecificacao.valorTotal}
+                  valorEntrada={valoresPrecificacao.valorEntrada}
+                  valorParcela={valoresPrecificacao.valorParcela}
+                  data={etapa10Data}
+                  onDataChange={setEtapa10Data}
+                />
               )}
 
-              {/* ETAPA 10: Gerar Proposta Comercial */}
+              {/* ETAPA 10: Agendar Visita (Apresentação) */}
               {currentStep === 10 && (
-                <div className="space-y-6">
-                  <Alert className="border-yellow-200 bg-yellow-50">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-700">
-                      <strong>Atenção:</strong> Esta etapa requer aprovação do Gestor ADM para ser finalizada.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="flex flex-col items-center justify-center py-12 gap-6">
-                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                      <FileText className="h-10 w-10 text-primary" />
-                    </div>
-                    <div className="text-center">
-                      <h3 className="font-medium mb-2">Proposta Comercial</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Visualize e imprima a proposta comercial compilada com os dados das etapas anteriores.
-                      </p>
-                      <Button style={{ backgroundColor: '#06b6d4', color: 'white' }}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Visualizar Proposta para Impressão
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ETAPA 11: Agendar Visita (Apresentação) */}
-              {currentStep === 11 && (
                 <div className="space-y-6">
                   <Alert>
                     <Calendar className="h-4 w-4" />
@@ -1411,8 +1386,8 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                 </div>
               )}
 
-              {/* ETAPA 12: Realizar Visita (Apresentação) */}
-              {currentStep === 12 && (
+              {/* ETAPA 11: Realizar Visita (Apresentação) */}
+              {currentStep === 11 && (
                 <div className="space-y-6">
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
@@ -1430,11 +1405,13 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                       <p className="text-sm text-muted-foreground mb-4">
                         Marque a caixa abaixo para confirmar que a apresentação foi realizada.
                       </p>
-                      <div className="flex items-center space-x-2 justify-center">
-                        <Checkbox
+                      <div className="flex items-center space-x-3 justify-center">
+                        <Switch
                           id="apresentacaoRealizada"
                           checked={etapa12Data.apresentacaoRealizada}
-                          onCheckedChange={(checked) => setEtapa12Data({ apresentacaoRealizada: checked as boolean })}
+                          onCheckedChange={(checked) => {
+                            setEtapa12Data((prev) => ({ ...prev, apresentacaoRealizada: checked }));
+                          }}
                         />
                         <Label htmlFor="apresentacaoRealizada" className="cursor-pointer">
                           Apresentação realizada
@@ -1459,8 +1436,8 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                 </div>
               )}
 
-              {/* ETAPA 13: Follow-up 3 (Pós-Apresentação) */}
-              {currentStep === 13 && (
+              {/* ETAPA 12: Follow-up 3 (Pós-Apresentação) */}
+              {currentStep === 12 && (
                 <div className="space-y-6">
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
@@ -1618,8 +1595,8 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                 </div>
               )}
 
-              {/* ETAPA 14: Gerar Contrato (Upload) */}
-              {currentStep === 14 && (
+              {/* ETAPA 13: Gerar Contrato (Upload) */}
+              {currentStep === 13 && (
                 <div className="space-y-6">
                   <Alert className="border-yellow-200 bg-yellow-50">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
@@ -1639,10 +1616,10 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                         <p className="text-sm text-muted-foreground text-center">
                           Baixe o modelo de contrato padrão
                         </p>
-                        <Button variant="outline" style={{ borderColor: '#06b6d4', color: '#06b6d4' }}>
+                        <PrimaryButton variant="secondary">
                           <Download className="h-4 w-4 mr-2" />
                           Baixar Modelo de Contrato (.docx)
-                        </Button>
+                        </PrimaryButton>
                       </CardContent>
                     </Card>
 
@@ -1684,8 +1661,8 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                 </div>
               )}
 
-              {/* ETAPA 15: Contrato Assinado */}
-              {currentStep === 15 && (
+              {/* ETAPA 14: Contrato Assinado */}
+              {currentStep === 14 && (
                 <div className="space-y-6">
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
@@ -1703,11 +1680,13 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                       <p className="text-sm text-muted-foreground mb-4">
                         Marque a caixa abaixo para confirmar que o contrato foi assinado.
                       </p>
-                      <div className="flex items-center space-x-2 justify-center">
-                        <Checkbox
+                      <div className="flex items-center space-x-3 justify-center">
+                        <Switch
                           id="contratoAssinado"
                           checked={etapa15Data.contratoAssinado}
-                          onCheckedChange={(checked) => setEtapa15Data({ contratoAssinado: checked as boolean })}
+                          onCheckedChange={(checked) => {
+                            setEtapa15Data((prev) => ({ ...prev, contratoAssinado: checked }));
+                          }}
                         />
                         <Label htmlFor="contratoAssinado" className="cursor-pointer">
                           Contrato Assinado pelo Cliente
@@ -1734,8 +1713,8 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                 </div>
               )}
 
-              {/* ETAPA 16: Iniciar Contrato de Obra */}
-              {currentStep === 16 && (
+              {/* ETAPA 15: Iniciar Contrato de Obra */}
+              {currentStep === 15 && (
                 <div className="space-y-6">
                   <Alert className="border-green-200 bg-green-50">
                     <Check className="h-4 w-4 text-green-600" />
@@ -1753,10 +1732,10 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
                       <p className="text-sm text-muted-foreground mb-4 max-w-md">
                         Ao clicar no botão abaixo, esta OS será marcada como concluída, o lead será convertido em cliente e uma nova OS do tipo 13 (Contrato de Obra) será criada automaticamente para o time interno.
                       </p>
-                      <Button size="lg" style={{ backgroundColor: '#06b6d4', color: 'white' }}>
+                      <PrimaryButton size="lg">
                         <Send className="h-4 w-4 mr-2" />
                         Concluir OS e Gerar OS-13
-                      </Button>
+                      </PrimaryButton>
                     </div>
                   </div>
 
@@ -1799,7 +1778,11 @@ export function OSDetailsWorkflowPage({ onBack }: OSDetailsWorkflowPageProps = {
               totalSteps={steps.length}
               onPrevStep={handlePrevStep}
               onNextStep={handleNextStep}
-              onSaveDraft={() => console.log('Salvar rascunho')}
+              onSaveDraft={handleSaveRascunho}
+              showDraftButton={[3, 6, 7, 8].includes(currentStep)} // Mostrar apenas em etapas com formulários extensos
+              disableNext={isLoading}
+              isLoading={isCreatingOS}
+              loadingText={currentStep === 2 ? 'Criando OS no Supabase...' : 'Processando...'}
             />
           </Card>
         </div>
