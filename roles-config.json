@@ -1,0 +1,731 @@
+{
+  "versao": "2.0",
+  "data_criacao": "2025-11-14",
+  "status": "Especificação Completa",
+  "titulo": "Configuração de Papéis, Hierarquias e Permissões - ERP Minerva Engenharia",
+
+  "niveis_hierarquicos": [
+    {
+      "nivel": 4,
+      "nome": "Diretoria",
+      "quantidade_esperada": 1,
+      "descricao": "Nível mais alto, acesso total ao sistema"
+    },
+    {
+      "nivel": 3,
+      "nome": "Gestores",
+      "quantidade_esperada": 4,
+      "descricao": "Supervisão de setores e aprovação de tarefas"
+    },
+    {
+      "nivel": 2,
+      "nome": "Colaboradores",
+      "quantidade_esperada": "Vários",
+      "descricao": "Execução de tarefas delegadas"
+    },
+    {
+      "nivel": 1,
+      "nome": "Mão de Obra (MOBRA)",
+      "quantidade_esperada": "Vários",
+      "descricao": "Sem acesso ao sistema, presença registrada externamente"
+    }
+  ],
+
+  "setores": [
+    {
+      "codigo": "COM",
+      "nome": "Comercial",
+      "descricao": "Vendas, cotações, vistorias",
+      "gestor_padrao": "GESTOR_COMERCIAL"
+    },
+    {
+      "codigo": "ASS",
+      "nome": "Assessoria Técnica",
+      "descricao": "Laudos, consultoria técnica",
+      "gestor_padrao": "GESTOR_ASSESSORIA"
+    },
+    {
+      "codigo": "OBR",
+      "nome": "Obras",
+      "descricao": "Execução de obras, medições",
+      "gestor_padrao": "GESTOR_OBRAS"
+    },
+    {
+      "codigo": "LAB",
+      "nome": "Laboratório",
+      "descricao": "Ensaios e testes laboratoriais",
+      "gestor_padrao": null
+    },
+    {
+      "codigo": "ADM",
+      "nome": "Administrativo",
+      "descricao": "Coordenação, apoio administrativo",
+      "gestor_padrao": "GESTOR_ADM"
+    },
+    {
+      "codigo": "ENG",
+      "nome": "Engenharia",
+      "descricao": "Projetos e engenharia (futuro)",
+      "gestor_padrao": null
+    }
+  ],
+
+  "roles": [
+    {
+      "id": "DIRETORIA",
+      "nome": "Diretoria",
+      "nivel": 4,
+      "setor": "ADM",
+      "descricao": "Diretoria com acesso total ao sistema",
+      "pode_delegar_para": ["*"],
+      "pode_aprovar_setores": ["*"],
+      "acesso_modulos": ["administrativo", "financeiro", "operacional", "recursos_humanos"],
+      "acesso_setores": ["COM", "ASS", "OBR", "LAB", "ADM", "ENG"],
+      "permissoes_especiais": [
+        "reabrir_os_concluida",
+        "gerenciar_usuarios",
+        "ver_auditoria_completa"
+      ]
+    },
+
+    {
+      "id": "GESTOR_COMERCIAL",
+      "nome": "Gestor Comercial",
+      "nivel": 3,
+      "setor": "COM",
+      "descricao": "Gestor do setor comercial com acesso cruzado",
+      "pode_delegar_para": ["COM", "ASS", "OBR", "LAB", "ADM"],
+      "pode_aprovar_setores": ["COM"],
+      "acesso_modulos": ["administrativo", "financeiro"],
+      "acesso_setores": ["COM", "ASS", "OBR", "LAB", "ADM"],
+      "permissoes_especiais": [
+        "cadastro_os",
+        "cadastro_leads",
+        "conciliacao_bancaria",
+        "agendar_vistorias",
+        "gerenciar_disponibilidade_calendario"
+      ]
+    },
+
+    {
+      "id": "GESTOR_ASSESSORIA",
+      "nome": "Gestor Assessoria Técnica",
+      "nivel": 3,
+      "setor": "ASS",
+      "descricao": "Gestor da assessoria técnica",
+      "pode_delegar_para": ["ASS"],
+      "pode_aprovar_setores": ["ASS"],
+      "acesso_modulos": ["operacional"],
+      "acesso_setores": ["ASS"],
+      "permissoes_especiais": [
+        "aprovacao_laudos_tecnicos",
+        "gerenciar_disponibilidade_calendario"
+      ]
+    },
+
+    {
+      "id": "GESTOR_OBRAS",
+      "nome": "Gestor de Obras",
+      "nivel": 3,
+      "setor": "OBR",
+      "descricao": "Gestor do setor de obras",
+      "pode_delegar_para": ["OBR"],
+      "pode_aprovar_setores": ["OBR"],
+      "acesso_modulos": ["operacional"],
+      "acesso_setores": ["OBR"],
+      "permissoes_especiais": [
+        "aprovacao_medicoes",
+        "gerenciar_disponibilidade_calendario"
+      ]
+    },
+
+    {
+      "id": "GESTOR_ADM",
+      "nome": "Gestor Administrativo",
+      "nivel": 3,
+      "setor": "ADM",
+      "descricao": "Gestor administrativo com coordenação cruzada",
+      "pode_delegar_para": ["COM", "ASS", "OBR", "LAB", "ADM"],
+      "pode_aprovar_setores": ["ADM"],
+      "acesso_modulos": ["administrativo", "financeiro", "operacional"],
+      "acesso_setores": ["COM", "ASS", "OBR", "LAB", "ADM"],
+      "permissoes_especiais": [
+        "relatorio_consolidado",
+        "coordenacao_setores"
+      ]
+    },
+
+    {
+      "id": "COLABORADOR_COMERCIAL",
+      "nome": "Colaborador Comercial",
+      "nivel": 2,
+      "setor": "COM",
+      "descricao": "Colaborador executante do setor comercial",
+      "pode_delegar_para": [],
+      "pode_aprovar_setores": [],
+      "acesso_modulos": ["operacional"],
+      "acesso_setores": ["COM"],
+      "permissoes_especiais": [],
+      "acesso_dados": "apenas_suas_tarefas"
+    },
+
+    {
+      "id": "COLABORADOR_ASSESSORIA",
+      "nome": "Colaborador Assessoria",
+      "nivel": 2,
+      "setor": "ASS",
+      "descricao": "Colaborador executante da assessoria técnica",
+      "pode_delegar_para": [],
+      "pode_aprovar_setores": [],
+      "acesso_modulos": ["operacional"],
+      "acesso_setores": ["ASS"],
+      "permissoes_especiais": [],
+      "acesso_dados": "apenas_suas_tarefas"
+    },
+
+    {
+      "id": "COLABORADOR_OBRAS",
+      "nome": "Colaborador Obras",
+      "nivel": 2,
+      "setor": "OBR",
+      "descricao": "Colaborador executante do setor de obras",
+      "pode_delegar_para": [],
+      "pode_aprovar_setores": [],
+      "acesso_modulos": ["operacional"],
+      "acesso_setores": ["OBR"],
+      "permissoes_especiais": [],
+      "acesso_dados": "apenas_suas_tarefas"
+    },
+
+    {
+      "id": "COLABORADOR_ADM",
+      "nome": "Colaborador Administrativo",
+      "nivel": 2,
+      "setor": "ADM",
+      "descricao": "Colaborador executante do setor administrativo",
+      "pode_delegar_para": [],
+      "pode_aprovar_setores": [],
+      "acesso_modulos": ["administrativo"],
+      "acesso_setores": ["ADM"],
+      "permissoes_especiais": [],
+      "acesso_dados": "apenas_suas_tarefas"
+    },
+
+    {
+      "id": "MOBRA",
+      "nome": "Mão de Obra",
+      "nivel": 1,
+      "setor": "variado",
+      "descricao": "Servente, Meio Oficial, Oficial - Sem acesso ao sistema",
+      "pode_delegar_para": [],
+      "pode_aprovar_setores": [],
+      "acesso_modulos": [],
+      "acesso_setores": [],
+      "permissoes_especiais": [],
+      "acesso_sistema": false,
+      "observacao": "Presença registrada manualmente, custos rateados por Centro de Custo"
+    }
+  ],
+
+  "usuarios_seed_iniciais": [
+    {
+      "id": 1,
+      "nome": "Carlos Alberto Diretor",
+      "email": "diretoria@minerva.com",
+      "senha_padrao": "Dir@2025Minerva!",
+      "role": "DIRETORIA",
+      "setor": "ADM",
+      "supervisor_id": null,
+      "status": "ativo",
+      "descricao": "Diretor Geral - Acesso Total"
+    },
+    {
+      "id": 2,
+      "nome": "Maria Silva Gestora Comercial",
+      "email": "gestor.comercial@minerva.com",
+      "senha_padrao": "GestCom@2025!",
+      "role": "GESTOR_COMERCIAL",
+      "setor": "COM",
+      "supervisor_id": 1,
+      "status": "ativo",
+      "descricao": "Gestora do Setor Comercial"
+    },
+    {
+      "id": 3,
+      "nome": "João Pedro Gestor Assessoria",
+      "email": "gestor.assessoria@minerva.com",
+      "senha_padrao": "GestAss@2025!",
+      "role": "GESTOR_ASSESSORIA",
+      "setor": "ASS",
+      "supervisor_id": 1,
+      "status": "ativo",
+      "descricao": "Gestor da Assessoria Técnica"
+    },
+    {
+      "id": 4,
+      "nome": "Roberto Carlos Gestor Obras",
+      "email": "gestor.obras@minerva.com",
+      "senha_padrao": "GestObr@2025!",
+      "role": "GESTOR_OBRAS",
+      "setor": "OBR",
+      "supervisor_id": 1,
+      "status": "ativo",
+      "descricao": "Gestor do Setor de Obras"
+    },
+    {
+      "id": 5,
+      "nome": "Paula Fernanda Gestora ADM",
+      "email": "gestor.adm@minerva.com",
+      "senha_padrao": "GestAdm@2025!",
+      "role": "GESTOR_ADM",
+      "setor": "ADM",
+      "supervisor_id": 1,
+      "status": "ativo",
+      "descricao": "Gestora Administrativa"
+    },
+    {
+      "id": 6,
+      "nome": "Ana Claudia Vendedora",
+      "email": "vendedor.1@minerva.com",
+      "senha_padrao": "Vend001@2025!",
+      "role": "COLABORADOR_COMERCIAL",
+      "setor": "COM",
+      "supervisor_id": 2,
+      "status": "ativo",
+      "descricao": "Vendedora 1"
+    },
+    {
+      "id": 7,
+      "nome": "Fernando Luis Vendedor",
+      "email": "vendedor.2@minerva.com",
+      "senha_padrao": "Vend002@2025!",
+      "role": "COLABORADOR_COMERCIAL",
+      "setor": "COM",
+      "supervisor_id": 2,
+      "status": "ativo",
+      "descricao": "Vendedor 2"
+    },
+    {
+      "id": 8,
+      "nome": "Bruno Martins Técnico",
+      "email": "tecnico.ass.1@minerva.com",
+      "senha_padrao": "TecAss001@2025!",
+      "role": "COLABORADOR_ASSESSORIA",
+      "setor": "ASS",
+      "supervisor_id": 3,
+      "status": "ativo",
+      "descricao": "Técnico Assessoria 1"
+    },
+    {
+      "id": 9,
+      "nome": "Fabiana Souza Técnica",
+      "email": "tecnico.ass.2@minerva.com",
+      "senha_padrao": "TecAss002@2025!",
+      "role": "COLABORADOR_ASSESSORIA",
+      "setor": "ASS",
+      "supervisor_id": 3,
+      "status": "ativo",
+      "descricao": "Técnica Assessoria 2"
+    },
+    {
+      "id": 10,
+      "nome": "Marcelo Costa Encarregado",
+      "email": "encarregado.1@minerva.com",
+      "senha_padrao": "Encar001@2025!",
+      "role": "COLABORADOR_OBRAS",
+      "setor": "OBR",
+      "supervisor_id": 4,
+      "status": "ativo",
+      "descricao": "Encarregado de Obra 1"
+    },
+    {
+      "id": 11,
+      "nome": "Juliana Ribeiro Encarregada",
+      "email": "encarregado.2@minerva.com",
+      "senha_padrao": "Encar002@2025!",
+      "role": "COLABORADOR_OBRAS",
+      "setor": "OBR",
+      "supervisor_id": 4,
+      "status": "ativo",
+      "descricao": "Encarregada de Obra 2"
+    },
+    {
+      "id": 12,
+      "nome": "Larissa Martins Assistente",
+      "email": "assistente.adm@minerva.com",
+      "senha_padrao": "AsstAdm@2025!",
+      "role": "COLABORADOR_ADM",
+      "setor": "ADM",
+      "supervisor_id": 5,
+      "status": "ativo",
+      "descricao": "Assistente Administrativa"
+    },
+    {
+      "id": 13,
+      "nome": "José Silva da Costa Servente",
+      "email": "mobra.servente.1@minerva.com",
+      "role": "MOBRA",
+      "setor": "OBR",
+      "supervisor_id": 4,
+      "status": "ativo",
+      "tipo_mao_obra": "Servente",
+      "descricao": "Mão de Obra - Servente (sem acesso ao sistema)"
+    },
+    {
+      "id": 14,
+      "nome": "Antonio Pereira Meio Oficial",
+      "email": "mobra.meiooficial.1@minerva.com",
+      "role": "MOBRA",
+      "setor": "OBR",
+      "supervisor_id": 4,
+      "status": "ativo",
+      "tipo_mao_obra": "Meio Oficial",
+      "descricao": "Mão de Obra - Meio Oficial (sem acesso ao sistema)"
+    },
+    {
+      "id": 15,
+      "nome": "Valdemir Gonçalves Oficial",
+      "email": "mobra.oficial.1@minerva.com",
+      "role": "MOBRA",
+      "setor": "OBR",
+      "supervisor_id": 4,
+      "status": "ativo",
+      "tipo_mao_obra": "Oficial",
+      "descricao": "Mão de Obra - Oficial (sem acesso ao sistema)"
+    }
+  ],
+
+  "acoes_permitidas": {
+    "criar_os": {
+      "DIRETORIA": { "qualquer_setor": true },
+      "GESTOR_COMERCIAL": { "qualquer_setor": true },
+      "GESTOR_ASSESSORIA": { "seu_setor": true },
+      "GESTOR_OBRAS": { "seu_setor": true },
+      "GESTOR_ADM": { "qualquer_setor": true },
+      "COLABORADOR_COMERCIAL": false,
+      "COLABORADOR_ASSESSORIA": false,
+      "COLABORADOR_OBRAS": false,
+      "COLABORADOR_ADM": false,
+      "MOBRA": false
+    },
+
+    "editar_os": {
+      "DIRETORIA": { "qualquer_setor": true },
+      "GESTOR_COMERCIAL": { "qualquer_setor": true },
+      "GESTOR_ASSESSORIA": { "seu_setor": true },
+      "GESTOR_OBRAS": { "seu_setor": true },
+      "GESTOR_ADM": { "qualquer_setor": true },
+      "COLABORADOR_COMERCIAL": false,
+      "COLABORADOR_ASSESSORIA": false,
+      "COLABORADOR_OBRAS": false,
+      "COLABORADOR_ADM": false,
+      "MOBRA": false
+    },
+
+    "delegar_os": {
+      "DIRETORIA": ["COM", "ASS", "OBR", "LAB", "ADM", "ENG"],
+      "GESTOR_COMERCIAL": ["COM", "ASS", "OBR", "LAB", "ADM"],
+      "GESTOR_ASSESSORIA": ["ASS"],
+      "GESTOR_OBRAS": ["OBR"],
+      "GESTOR_ADM": ["COM", "ASS", "OBR", "LAB", "ADM"],
+      "COLABORADOR_COMERCIAL": [],
+      "COLABORADOR_ASSESSORIA": [],
+      "COLABORADOR_OBRAS": [],
+      "COLABORADOR_ADM": [],
+      "MOBRA": []
+    },
+
+    "aprovar_tarefa": {
+      "DIRETORIA": ["COM", "ASS", "OBR", "LAB", "ADM", "ENG"],
+      "GESTOR_COMERCIAL": ["COM"],
+      "GESTOR_ASSESSORIA": ["ASS"],
+      "GESTOR_OBRAS": ["OBR"],
+      "GESTOR_ADM": ["ADM"],
+      "COLABORADOR_COMERCIAL": [],
+      "COLABORADOR_ASSESSORIA": [],
+      "COLABORADOR_OBRAS": [],
+      "COLABORADOR_ADM": [],
+      "MOBRA": []
+    },
+
+    "reabrir_os_concluida": {
+      "DIRETORIA": true,
+      "GESTOR_COMERCIAL": false,
+      "GESTOR_ASSESSORIA": false,
+      "GESTOR_OBRAS": false,
+      "GESTOR_ADM": false,
+      "COLABORADOR_COMERCIAL": false,
+      "COLABORADOR_ASSESSORIA": false,
+      "COLABORADOR_OBRAS": false,
+      "COLABORADOR_ADM": false,
+      "MOBRA": false
+    },
+
+    "gerenciar_usuarios": {
+      "DIRETORIA": true,
+      "GESTOR_COMERCIAL": false,
+      "GESTOR_ASSESSORIA": false,
+      "GESTOR_OBRAS": false,
+      "GESTOR_ADM": false,
+      "COLABORADOR_COMERCIAL": false,
+      "COLABORADOR_ASSESSORIA": false,
+      "COLABORADOR_OBRAS": false,
+      "COLABORADOR_ADM": false,
+      "MOBRA": false
+    },
+
+    "visualizar_financeiro": {
+      "DIRETORIA": true,
+      "GESTOR_COMERCIAL": true,
+      "GESTOR_ASSESSORIA": false,
+      "GESTOR_OBRAS": false,
+      "GESTOR_ADM": true,
+      "COLABORADOR_COMERCIAL": false,
+      "COLABORADOR_ASSESSORIA": false,
+      "COLABORADOR_OBRAS": false,
+      "COLABORADOR_ADM": false,
+      "MOBRA": false
+    }
+  },
+
+  "modulos_do_sistema": [
+    {
+      "id": "administrativo",
+      "nome": "Administrativo",
+      "descricao": "Cadastros gerais, documentação, configurações",
+      "roles_acesso": ["DIRETORIA", "GESTOR_COMERCIAL", "GESTOR_ADM", "COLABORADOR_ADM"]
+    },
+    {
+      "id": "financeiro",
+      "nome": "Financeiro",
+      "descricao": "Receitas, despesas, relatórios, faturamento",
+      "roles_acesso": ["DIRETORIA", "GESTOR_COMERCIAL", "GESTOR_ADM"]
+    },
+    {
+      "id": "operacional",
+      "nome": "Operacional",
+      "descricao": "OS, tarefas, execução, acompanhamento",
+      "roles_acesso": [
+        "DIRETORIA",
+        "GESTOR_COMERCIAL",
+        "GESTOR_ASSESSORIA",
+        "GESTOR_OBRAS",
+        "GESTOR_ADM",
+        "COLABORADOR_COMERCIAL",
+        "COLABORADOR_ASSESSORIA",
+        "COLABORADOR_OBRAS",
+        "COLABORADOR_ADM"
+      ]
+    },
+    {
+      "id": "recursos_humanos",
+      "nome": "Recursos Humanos",
+      "descricao": "Usuários, permissões, auditoria",
+      "roles_acesso": ["DIRETORIA"]
+    }
+  ],
+
+  "tabelas_banco_dados": [
+    {
+      "nome": "colaboradores",
+      "tipo": "existente_alterada",
+      "descricao": "Armazena usuários do sistema",
+      "campos_novos": [
+        {
+          "nome": "supervisor_id",
+          "tipo": "UUID",
+          "descricao": "Referência ao supervisor (FK self)",
+          "obrigatorio": false
+        },
+        {
+          "nome": "status_colaborador",
+          "tipo": "ENUM",
+          "valores": ["ativo", "inativo", "suspenso"],
+          "descricao": "Status do colaborador"
+        },
+        {
+          "nome": "data_admissao",
+          "tipo": "DATE",
+          "descricao": "Data de admissão"
+        },
+        {
+          "nome": "cpf",
+          "tipo": "VARCHAR",
+          "descricao": "CPF do colaborador",
+          "unique": true
+        },
+        {
+          "nome": "telefone",
+          "tipo": "VARCHAR",
+          "descricao": "Telefone de contato"
+        },
+        {
+          "nome": "endereco",
+          "tipo": "TEXT",
+          "descricao": "Endereço completo"
+        }
+      ]
+    },
+    {
+      "nome": "delegacoes",
+      "tipo": "nova",
+      "descricao": "Registra delegações de tarefas entre usuários",
+      "campos": [
+        "id (PK)",
+        "os_id (FK ordens_servico)",
+        "delegante_id (FK colaboradores)",
+        "delegado_id (FK colaboradores)",
+        "data_delegacao",
+        "data_prazo",
+        "status_delegacao",
+        "descricao_tarefa",
+        "observacoes",
+        "data_atualizacao"
+      ]
+    },
+    {
+      "nome": "aprovacoes",
+      "tipo": "nova",
+      "descricao": "Registra aprovações de tarefas delegadas",
+      "campos": [
+        "id (PK)",
+        "delegacao_id (FK delegacoes)",
+        "responsavel_id (FK colaboradores)",
+        "status_aprovacao",
+        "observacoes_aprovacao",
+        "data_aprovacao",
+        "data_criacao"
+      ]
+    },
+    {
+      "nome": "auditoria_acoes",
+      "tipo": "nova",
+      "descricao": "Rastreamento completo de ações do sistema",
+      "campos": [
+        "id (PK)",
+        "usuario_id (FK colaboradores)",
+        "acao",
+        "entidade_tipo",
+        "entidade_id",
+        "detalhes_antes (JSONB)",
+        "detalhes_depois (JSONB)",
+        "ip_origem",
+        "data_acao"
+      ]
+    }
+  ],
+
+  "fluxos_principais": [
+    {
+      "id": "fluxo_delegacao",
+      "nome": "Delegação e Aprovação de Tarefa",
+      "passos": [
+        "Gestor/Diretoria cria OS",
+        "Gestor/Diretoria delega para colaborador",
+        "Colaborador executa tarefa",
+        "Colaborador marca 'Pronto para Aprovação'",
+        "Gestor/Supervisor revisa",
+        "Gestor APROVA ou REJEITA",
+        "Se aprovada: OS concluída",
+        "Se rejeitada: Volta para colaborador"
+      ]
+    },
+    {
+      "id": "fluxo_reabertura",
+      "nome": "Reabertura de OS (Apenas Diretoria)",
+      "passos": [
+        "Diretoria identifica problema",
+        "Diretoria clica 'Reabrir OS'",
+        "Diretoria digita justificativa (obrigatório)",
+        "Sistema registra em auditoria",
+        "OS volta para colaborador",
+        "Colaborador refaz o trabalho",
+        "Volta ao fluxo normal de aprovação"
+      ]
+    },
+    {
+      "id": "fluxo_mobra",
+      "nome": "Registro de Mão de Obra",
+      "passos": [
+        "Gestor registra presença MOBRA manualmente",
+        "Sistema calcula: horas × valor/hora",
+        "Sistema rateia por Centro de Custo",
+        "Registro mantido em auditoria",
+        "Disponível para relatórios"
+      ]
+    }
+  ],
+
+  "seguranca": {
+    "rls_banco_dados": {
+      "implementado": false,
+      "prioridade": "Essencial",
+      "descricao": "Row Level Security no PostgreSQL para validar permissões no servidor"
+    },
+    "auditoria_completa": {
+      "implementado": false,
+      "prioridade": "Alta",
+      "descricao": "Tabela auditoria_acoes rastreia todas as ações sensíveis"
+    },
+    "validacao_servidor": {
+      "implementado": false,
+      "prioridade": "Essencial",
+      "descricao": "Validar permissões no servidor, não confiar apenas em frontend"
+    },
+    "hash_senha": {
+      "implementado": true,
+      "prioridade": "Crítica",
+      "descricao": "Supabase auth já faz hash de senhas"
+    }
+  },
+
+  "implementacao": {
+    "tempo_estimado_semanas": 8,
+    "sprints": [
+      {
+        "numero": 1,
+        "nome": "Estrutura Básica",
+        "duracao_semanas": 2,
+        "tarefas": [
+          "Expandir tipos em types.ts",
+          "Atualizar tabela colaboradores",
+          "Criar tabelas delegacoes/aprovacoes",
+          "Seed com 15 usuários"
+        ]
+      },
+      {
+        "numero": 2,
+        "nome": "Autenticação e Autorização",
+        "duracao_semanas": 2,
+        "tarefas": [
+          "Implementar PermissaoUtil",
+          "Implementar RLS no Supabase",
+          "Criar hook usePermissoes",
+          "Testes de permissões"
+        ]
+      },
+      {
+        "numero": 3,
+        "nome": "UI e Componentes",
+        "duracao_semanas": 2,
+        "tarefas": [
+          "Atualizar login",
+          "Componente delegação",
+          "Componente aprovação",
+          "Dashboard customizado"
+        ]
+      },
+      {
+        "numero": 4,
+        "nome": "Fluxos Avançados",
+        "duracao_semanas": 2,
+        "tarefas": [
+          "Reabertura de OS",
+          "Notificações",
+          "Rastreamento",
+          "Testes E2E e documentação"
+        ]
+      }
+    ]
+  }
+}
