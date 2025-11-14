@@ -1,8 +1,12 @@
 # ✅ Atualização: Campos Opcionais na Validação da Proposta
 
+> ⚠️ **DOCUMENTO ARQUIVADO** - 14/11/2025  
+> Este ajuste foi 100% implementado e está em produção.  
+> Referência histórica mantida. Ver `/src/FEATURES_IMPLEMENTADAS_LOG.md` para detalhes.
+
 **Data:** 10/11/2025  
 **Tipo:** Ajuste de Regra de Negócio  
-**Status:** ✅ IMPLEMENTADO
+**Status:** ✅ IMPLEMENTADO | 📦 ARQUIVADO
 
 ---
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Check, Lock } from 'lucide-react';
+import { Check, Lock, ArrowLeft } from 'lucide-react';
 import { cn } from '../ui/utils';
 
 /**
@@ -26,6 +26,8 @@ export interface WorkflowStepperProps {
   className?: string;
   /** Array de IDs de etapas concluídas */
   completedSteps: number[];
+  /** ID da última etapa ativa (antes de navegação histórica) */
+  lastActiveStep?: number;
 }
 
 /**
@@ -58,7 +60,8 @@ export function WorkflowStepper({
   currentStep, 
   onStepClick,
   className,
-  completedSteps = [] // Valor padrão para evitar erro
+  completedSteps = [], // Valor padrão para evitar erro
+  lastActiveStep
 }: WorkflowStepperProps) {
   
   const handleStepClick = (stepId: number, isAccessible: boolean) => {
@@ -74,6 +77,7 @@ export function WorkflowStepper({
           // Lógica de estado baseada na etapa atual
           const isCompleted = completedSteps.includes(step.id); // Usar completedSteps para determinar se está concluída
           const isCurrent = step.id === currentStep;
+          const isLastActive = lastActiveStep === step.id && currentStep !== step.id;
           const isAccessible = isCompleted || isCurrent; // Permite acessar etapas concluídas OU a atual
           
           return (
@@ -89,25 +93,41 @@ export function WorkflowStepper({
                 )}
                 aria-label={`${step.title} - Etapa ${step.id}`}
                 aria-current={isCurrent ? 'step' : undefined}
+                title={isCompleted ? "Clique para visualizar dados preenchidos" : undefined}
               >
                 {/* Circle with icon */}
-                <div className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center transition-all flex-shrink-0",
-                  isCompleted && "bg-green-100",
-                  isCurrent && !isCompleted && "bg-primary/20",
-                  !isCompleted && !isCurrent && "bg-neutral-100"
-                )}>
-                  {isCompleted ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                  ) : isCurrent ? (
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                  ) : (
-                    <Lock className="h-3 w-3 text-neutral-400" />
+                <div className="relative">
+                  <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center transition-all flex-shrink-0",
+                    isLastActive && "bg-orange-500 border-2 border-orange-300 animate-pulse",
+                    !isLastActive && isCompleted && "bg-green-100",
+                    !isLastActive && isCurrent && !isCompleted && "bg-primary/20",
+                    !isLastActive && !isCompleted && !isCurrent && "bg-neutral-100"
+                  )}>
+                    {isLastActive ? (
+                      <ArrowLeft className="h-3 w-3 text-white" />
+                    ) : isCompleted ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : isCurrent ? (
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                    ) : (
+                      <Lock className="h-3 w-3 text-neutral-400" />
+                    )}
+                  </div>
+                  
+                  {/* Indicador "Você estava aqui" */}
+                  {isLastActive && (
+                    <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[7px] text-orange-600 font-semibold whitespace-nowrap">
+                      Estava aqui
+                    </span>
                   )}
                 </div>
                 
                 {/* Step info */}
-                <div className="text-center">
+                <div className={cn(
+                  "text-center",
+                  isLastActive && "mt-2"
+                )}>
                   <div className="text-[9px] font-medium">
                     E{step.id}
                   </div>

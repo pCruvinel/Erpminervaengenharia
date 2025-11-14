@@ -15,6 +15,9 @@ import { OSDetailsAssessoriaPage } from './components/os/os-details-assessoria-p
 import { OSListPage } from './components/os/os-list-page';
 import { OSCreationHub } from './components/os/os-creation-hub';
 import { OSWizardPlaceholder } from './components/os/os-wizard-placeholder';
+import { OS08WorkflowPage } from './components/os/os08-workflow-page';
+import { OS09WorkflowPage } from './components/os/os09-workflow-page';
+import { OS13WorkflowPage } from './components/os/os13-workflow-page';
 import { TestSchemaReload } from './components/test-schema-reload';
 import { SeedUsuariosPage } from './components/admin/seed-usuarios-page';
 import { 
@@ -256,9 +259,7 @@ export default function App() {
             )}
             
             {currentPage === 'wizard-start-contrato-obra' && (
-              <OSWizardPlaceholder
-                title="Start de Contrato de Obra (OS 13)"
-                description="Este wizard permite registrar o início de um contrato de obra já assinado."
+              <OS13WorkflowPage
                 onBack={() => setCurrentPage('os-criar')}
               />
             )}
@@ -284,17 +285,13 @@ export default function App() {
             )}
             
             {currentPage === 'wizard-vistoria' && (
-              <OSWizardPlaceholder
-                title="Vistoria Técnica (OS 08)"
-                description="Este wizard permite criar uma ordem de vistoria ou inspeção técnica."
+              <OS08WorkflowPage
                 onBack={() => setCurrentPage('os-criar')}
               />
             )}
             
             {currentPage === 'wizard-requisicao-compras' && (
-              <OSWizardPlaceholder
-                title="Requisição de Compras (OS 09)"
-                description="Este wizard permite criar uma requisição de compra de materiais ou serviços."
+              <OS09WorkflowPage
                 onBack={() => setCurrentPage('os-criar')}
               />
             )}
@@ -302,7 +299,7 @@ export default function App() {
             {currentPage === 'wizard-requisicao-mao-obra' && (
               <OSWizardPlaceholder
                 title="Requisição de Mão de Obra (OS 10)"
-                description="Este wizard permite solicitar a contratação de nova mão de obra ou colaboradores."
+                description="Este wizard permite solicitar a contratação de nova mo de obra ou colaboradores."
                 onBack={() => setCurrentPage('os-criar')}
               />
             )}

@@ -1,8 +1,12 @@
 # ✅ Integração Completa: Etapas com Supabase
 
+> ⚠️ **DOCUMENTO ARQUIVADO** - 14/11/2025  
+> Esta integração foi 100% implementada e está em produção desde 10/11/2025.  
+> Referência histórica mantida. Ver `/src/FEATURES_IMPLEMENTADAS_LOG.md` para detalhes.
+
 **Data:** 10/11/2025  
 **Implementado por:** Sistema Minerva ERP  
-**Status:** ✅ IMPLEMENTADO
+**Status:** ✅ IMPLEMENTADO | 📦 ARQUIVADO
 
 ---
 

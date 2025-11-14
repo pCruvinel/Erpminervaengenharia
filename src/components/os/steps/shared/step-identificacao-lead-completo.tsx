@@ -106,7 +106,11 @@ export function StepIdentificacaoLeadCompleto({
       console.log('✅ Dados do lead preenchidos com sucesso');
     } catch (error) {
       console.error('❌ Erro ao preencher dados do lead:', error);
-      toast.error('Erro ao carregar dados do lead');
+      try {
+        toast.error('Erro ao carregar dados do lead');
+      } catch (toastError) {
+        console.error('❌ Erro ao exibir toast (preencherFormData):', toastError);
+      }
     }
   };
   
@@ -155,7 +159,11 @@ export function StepIdentificacaoLeadCompleto({
       
       // Validações básicas
       if (!formData.nome || !formData.cpfCnpj || !formData.telefone || !formData.email) {
-        toast.error('Preencha todos os campos obrigatórios');
+        try {
+          toast.error('Preencha todos os campos obrigatórios');
+        } catch (toastError) {
+          console.error('❌ Erro ao exibir toast (validação novo lead):', toastError);
+        }
         return;
       }
       

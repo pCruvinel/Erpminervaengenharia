@@ -234,6 +234,17 @@ export function useEtapas() {
   };
 
   /**
+   * Buscar dados salvos de uma etapa específica
+   * 
+   * @param ordem - Número da etapa (1, 2, 3...)
+   * @returns Dados da etapa ou null
+   */
+  const getEtapaData = (ordem: number): any | null => {
+    const etapa = getEtapaByOrdem(ordem);
+    return etapa?.dados_etapa || null;
+  };
+
+  /**
    * Limpar cache local de etapas
    */
   const clearEtapas = (): void => {
@@ -256,6 +267,7 @@ export function useEtapas() {
     // Utilitários
     getEtapaByOrdem,
     hasEtapa,
+    getEtapaData,
     clearEtapas,
   };
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '../ui/button';
 import { PrimaryButton } from '../ui/primary-button';
-import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Loader2, Info } from 'lucide-react';
 
 interface WorkflowFooterProps {
   currentStep: number;
@@ -17,6 +17,8 @@ interface WorkflowFooterProps {
   showDraftButton?: boolean;
   isLoading?: boolean;
   loadingText?: string;
+  readOnlyMode?: boolean;
+  onReturnToActive?: () => void;
 }
 
 export function WorkflowFooter({
@@ -33,6 +35,8 @@ export function WorkflowFooter({
   showDraftButton = true,
   isLoading = false,
   loadingText = 'Processando...',
+  readOnlyMode = false,
+  onReturnToActive,
 }: WorkflowFooterProps) {
   const isLastStep = currentStep === totalSteps;
 
@@ -52,46 +56,66 @@ export function WorkflowFooter({
           <span className="font-semibold">{currentStep}</span> / {totalSteps}
         </span>
 
-        <div className="flex gap-2">
-          {showDraftButton && (
-            <Button variant="outline" onClick={onSaveDraft} disabled={isLoading}>
-              Salvar Rascunho
-            </Button>
-          )}
-          {isLastStep ? (
-            <PrimaryButton 
-              onClick={onNextStep}
-              disabled={disableNext || isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {loadingText}
-                </>
-              ) : (
-                <>
-                  {finalButtonText}
-                  <Check className="h-4 w-4 ml-2" />
-                </>
+        <div className="flex gap-2 items-center">
+          {readOnlyMode ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 italic">
+                Visualizando dados salvos
+              </span>
+              {onReturnToActive && (
+                <Button
+                  onClick={onReturnToActive}
+                  style={{ backgroundColor: '#f97316', color: 'white' }}
+                  className="hover:opacity-90"
+                >
+                  <ChevronRight className="h-4 w-4 mr-2" />
+                  Voltar para onde estava
+                </Button>
               )}
-            </PrimaryButton>
+            </div>
           ) : (
-            <PrimaryButton 
-              onClick={onNextStep}
-              disabled={disableNext || isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {loadingText}
-                </>
-              ) : (
-                <>
-                  {nextButtonText}
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </>
+            <>
+              {showDraftButton && (
+                <Button variant="outline" onClick={onSaveDraft} disabled={isLoading}>
+                  Salvar Rascunho
+                </Button>
               )}
-            </PrimaryButton>
+              {isLastStep ? (
+                <PrimaryButton 
+                  onClick={onNextStep}
+                  disabled={disableNext || isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {loadingText}
+                    </>
+                  ) : (
+                    <>
+                      {finalButtonText}
+                      <Check className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton 
+                  onClick={onNextStep}
+                  disabled={disableNext || isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {loadingText}
+                    </>
+                  ) : (
+                    <>
+                      {nextButtonText}
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </PrimaryButton>
+              )}
+            </>
           )}
         </div>
       </div>

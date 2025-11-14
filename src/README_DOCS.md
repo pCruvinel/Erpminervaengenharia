@@ -474,3 +474,23 @@ Exemplos...
 - Design System v2.0 completo
 - Documentação de fluxos OS
 - Guias de implementação
+
+---
+
+## 📚 Sistema e Arquitetura
+- ✅ `DATABASE_SCHEMA.md` - Schema do banco de dados
+- ✅ `DESIGN_SYSTEM.md` - Sistema de design Minerva
+- ✅ `API_INTEGRATION_GUIDE.md` - Guia de integração com API
+- ✅ `SUPABASE_INTEGRATION.md` - Integração com Supabase
+
+### Upload de Arquivos ⭐ NOVO
+- ✅ `UPLOAD_STORAGE_GUIDE.md` - Guia consolidado de upload v2.0
+- ✅ `QUICK_STORAGE_SETUP.md` - Setup rápido (5 minutos)
+- ✅ `CREATE_BUCKET.sql` - Script SQL de criação
+- ✅ `STORAGE_POLICIES.sql` - Políticas RLS
+
+### Meta-Documentação ⭐ NOVO
+- ✅ `/src/README.md` - Índice de documentação organizacional
+- ✅ `/src/DOCUMENTACAO_REORGANIZADA.md` - Guia de navegação
+- ✅ `/src/FEATURES_IMPLEMENTADAS_LOG.md` - Log de features implementadas
+- ✅ Ver pasta `/src/` para índices completos

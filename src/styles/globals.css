@@ -11,6 +11,7 @@
 
 @import './variables.css';
 @import './components.css';
+@import './workflow-animations.css';
 
 /* ==========================================
  * RESET & BASE

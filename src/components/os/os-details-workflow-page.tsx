@@ -23,7 +23,8 @@ import {
   Download,
   AlertCircle,
   Trash2,
-  Loader2
+  Loader2,
+  Info
 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { WorkflowStepper, WorkflowStep } from './workflow-stepper';
@@ -36,6 +37,7 @@ import { useEtapas } from '../../lib/hooks/use-etapas';
 import { ordensServicoAPI, clientesAPI } from '../../lib/api-client';
 import { toast } from '../../lib/utils/safe-toast';
 import { ErrorBoundary } from '../error-boundary';
+import { uploadFile, deleteFile, formatFileSize, getFileUrl } from '../../lib/utils/supabase-storage';
 
 // Definição das 15 etapas do fluxo OS 01-04
 const steps: WorkflowStep[] = [
@@ -77,7 +79,11 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
   const osId = osIdProp || internalOsId;
   
   // Hook para gerenciar etapas
-  const { etapas, isLoading, fetchEtapas, createEtapa, updateEtapa, saveFormData } = useEtapas();
+  const { etapas, isLoading, fetchEtapas, createEtapa, updateEtapa, saveFormData, getEtapaData } = useEtapas();
+  
+  // Estados de navegação histórica
+  const [lastActiveStep, setLastActiveStep] = useState<number | null>(null);
+  const [isHistoricalNavigation, setIsHistoricalNavigation] = useState(false);
   
   // Calcular quais etapas estão concluídas (status = APROVADA)
   const completedSteps = useMemo(() => {
@@ -103,7 +109,20 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
     nomeContatoLocal: '',
     telefoneContatoLocal: '',
     cargoContatoLocal: '',
+    anexos: [] as Array<{
+      id: string;
+      name: string;
+      path: string;
+      size: number;
+      type: string;
+      url: string;
+      uploadedAt: string;
+    }>,
   });
+  
+  // Estado para controlar upload
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [etapa4Data, setEtapa4Data] = useState({ dataAgendamento: '' });
   const [etapa5Data, setEtapa5Data] = useState({ visitaRealizada: false });
   const [etapa6Data, setEtapa6Data] = useState({
@@ -221,10 +240,141 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
     };
   }, [etapa8Data.etapasPrincipais, etapa9Data]);
 
+  // Funções de upload de arquivos
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    if (!osId) {
+      toast.error('É necessário criar a OS antes de anexar arquivos');
+      return;
+    }
+    
+    // TODO: Pegar colaboradorId do usuário logado (por enquanto usando mock)
+    const colaboradorId = 'user-123';
+    
+    // Determinar osNumero e etapa baseado na etapa atual
+    const osNumero = 'os1'; // Sempre OS 1-4 neste componente
+    
+    // Mapear etapa atual para nome da pasta
+    const etapaMap: Record<number, string> = {
+      3: 'follow-up1',
+      5: 'visita-tecnica',
+      6: 'follow-up2',
+      7: 'memorial-escopo',
+      9: 'proposta-comercial',
+      11: 'apresentacao-proposta',
+      12: 'follow-up3',
+    };
+    
+    const etapaNome = etapaMap[currentStep];
+    if (!etapaNome) {
+      toast.error('Esta etapa não permite upload de arquivos');
+      return;
+    }
+    
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    try {
+      const uploadedFiles = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        console.log(`📤 Uploading file ${i + 1}/${files.length}: ${file.name} para ${osNumero}/${etapaNome}`);
+        
+        const uploadedFile = await uploadFile({
+          file,
+          osNumero: osNumero,
+          etapa: etapaNome,
+          osId: osId,
+          colaboradorId: colaboradorId,
+        });
+        
+        uploadedFiles.push(uploadedFile);
+        setUploadProgress(((i + 1) / files.length) * 100);
+      }
+      
+      // Adicionar arquivos ao estado
+      setEtapa3Data(prev => ({
+        ...prev,
+        anexos: [...prev.anexos, ...uploadedFiles],
+      }));
+      
+      toast.success(`${uploadedFiles.length} arquivo(s) enviado(s) com sucesso!`);
+      
+    } catch (error) {
+      console.error('❌ Error uploading files:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao fazer upload dos arquivos');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+  
+  const handleFileDelete = async (fileId: string, filePath: string) => {
+    try {
+      console.log(`🗑️ Deleting file: ${filePath}`);
+      
+      await deleteFile(filePath);
+      
+      // Remover do estado
+      setEtapa3Data(prev => ({
+        ...prev,
+        anexos: prev.anexos.filter(f => f.id !== fileId),
+      }));
+      
+      toast.success('Arquivo removido com sucesso!');
+      
+    } catch (error) {
+      console.error('❌ Error deleting file:', error);
+      toast.error('Erro ao remover arquivo');
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer.files;
+    handleFileUpload(files);
+  };
+
   const handleStepClick = (stepId: number) => {
-    // Permite navegar apenas para etapas até a atual
+    // Só permite voltar para etapas concluídas ou a etapa atual
     if (stepId <= currentStep) {
+      // Se está navegando para uma etapa anterior, salva a posição atual
+      if (stepId < currentStep && !isHistoricalNavigation) {
+        setLastActiveStep(currentStep);
+        setIsHistoricalNavigation(true);
+        
+        toast.info('Visualizando etapa anterior. Seus dados foram salvos.', { icon: '👁️' });
+      }
+      
+      // Se está voltando para a última etapa ativa, limpa o modo histórico
+      if (stepId === lastActiveStep) {
+        setIsHistoricalNavigation(false);
+        setLastActiveStep(null);
+        
+        toast.success('Voltou para onde estava!', { icon: '🎯' });
+      }
+      
       setCurrentStep(stepId);
+    } else {
+      toast.warning('Complete as etapas anteriores primeiro', { icon: '🔒' });
+    }
+  };
+
+  const handleReturnToActive = () => {
+    if (lastActiveStep) {
+      setCurrentStep(lastActiveStep);
+      setIsHistoricalNavigation(false);
+      setLastActiveStep(null);
+      toast.success('Voltou para onde estava!', { icon: '🎯' });
     }
   };
 
@@ -369,6 +519,78 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
       console.log('ℹ️ Modo Criação: osId não fornecido, OS será criada ao avançar da etapa 2 para 3');
     }
   }, [osIdProp]);
+
+  // Carregar dados da etapa atual ao navegar (navegação histórica)
+  useEffect(() => {
+    if (etapas && etapas.length > 0 && osId) {
+      carregarDadosEtapaAtual();
+    }
+  }, [currentStep, etapas]);
+
+  /**
+   * Carregar dados salvos da etapa atual
+   * (Usado na navegação histórica)
+   */
+  const carregarDadosEtapaAtual = () => {
+    const dadosSalvos = getEtapaData(currentStep);
+    
+    if (!dadosSalvos) {
+      console.log(`ℹ️ Etapa ${currentStep} sem dados salvos`);
+      return;
+    }
+    
+    console.log(`📥 Carregando dados da etapa ${currentStep}:`, dadosSalvos);
+    
+    // Carregar dados no estado correspondente
+    switch (currentStep) {
+      case 1:
+        setEtapa1Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 2:
+        setEtapa2Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 3:
+        setEtapa3Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 4:
+        setEtapa4Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 5:
+        setEtapa5Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 6:
+        setEtapa6Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 7:
+        // Etapa 7 (Memorial Escopo) usa etapa8Data
+        setEtapa8Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 8:
+        setEtapa8Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 9:
+        setEtapa9Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 10:
+        setEtapa10Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 11:
+        setEtapa11Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 12:
+        setEtapa12Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 13:
+        setEtapa13Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 14:
+        setEtapa14Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+      case 15:
+        setEtapa15Data(prev => ({ ...prev, ...dadosSalvos }));
+        break;
+    }
+  };
 
   /**
    * Carregar etapas do banco e preencher estados locais
@@ -680,12 +902,38 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
       )}
       
       {/* Stepper Horizontal */}
-      <WorkflowStepper 
-        steps={steps}
-        currentStep={currentStep}
-        onStepClick={handleStepClick}
-        completedSteps={completedSteps}
-      />
+      {/* Stepper Horizontal com botão de retorno */}
+      <div className="relative">
+        <WorkflowStepper 
+          steps={steps}
+          currentStep={currentStep}
+          onStepClick={handleStepClick}
+          completedSteps={completedSteps}
+          lastActiveStep={lastActiveStep || undefined}
+        />
+        
+        {/* Botão de retorno rápido - posicionado absolutamente no canto direito */}
+        {isHistoricalNavigation && lastActiveStep && (
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 z-10">
+            <button
+              onClick={handleReturnToActive}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all shadow-lg whitespace-nowrap animate-pulse"
+              style={{ backgroundColor: '#f97316', color: 'white' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ea580c';
+                e.currentTarget.classList.remove('animate-pulse');
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f97316';
+                e.currentTarget.classList.add('animate-pulse');
+              }}
+            >
+              <ChevronLeft className="w-4 h-4 rotate-180" />
+              <span className="font-semibold text-sm">Voltar para Etapa {lastActiveStep}</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
@@ -704,6 +952,31 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
                 </Badge>
               </div>
             </CardHeader>
+            
+            {/* Banner de Modo de Visualização Histórica */}
+            {isHistoricalNavigation && (
+              <div className="mx-6 mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="text-blue-900 font-semibold mb-1">
+                    Modo de Visualização Histórica
+                  </h4>
+                  <p className="text-blue-800 text-sm">
+                    Você está visualizando dados de uma etapa já concluída.
+                    {lastActiveStep && (
+                      <> Você estava trabalhando na <strong>Etapa {lastActiveStep}</strong>.</>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={handleReturnToActive}
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm underline whitespace-nowrap"
+                >
+                  Voltar agora
+                </button>
+              </div>
+            )}
+            
             <CardContent className="space-y-6 flex-1 overflow-y-auto">
               
               {/* ETAPA 1: Identificação do Cliente/Lead */}
@@ -959,15 +1232,80 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
 
                     <div className="space-y-2">
                       <Label>Anexar Arquivos (escopo, laudo, fotos)</Label>
-                      <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          Clique para selecionar ou arraste arquivos aqui
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          PDF, JPG, PNG, DOCX, XLSX (máx. 10MB)
-                        </p>
+                      <div 
+                        className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
+                        onClick={() => document.getElementById('file-upload-etapa3')?.click()}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                      >
+                        <input
+                          id="file-upload-etapa3"
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.doc,.xls"
+                          onChange={(e) => handleFileUpload(e.target.files)}
+                          className="hidden"
+                        />
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="h-8 w-8 mx-auto mb-2 text-primary animate-spin" />
+                            <p className="text-sm text-muted-foreground">
+                              Enviando arquivos... {Math.round(uploadProgress)}%
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              Clique para selecionar ou arraste arquivos aqui
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              PDF, JPG, PNG, DOCX, XLSX (máx. 10MB)
+                            </p>
+                          </>
+                        )}
                       </div>
+                      
+                      {/* Lista de arquivos anexados */}
+                      {etapa3Data.anexos.length > 0 && (
+                        <div className="space-y-2 mt-4">
+                          <Label className="text-sm">Arquivos Anexados ({etapa3Data.anexos.length})</Label>
+                          <div className="space-y-2">
+                            {etapa3Data.anexos.map((file) => (
+                              <div
+                                key={file.id}
+                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-neutral-50"
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  <FileText className="h-5 w-5 text-primary" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{file.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatFileSize(file.size)} • {new Date(file.uploadedAt).toLocaleString('pt-BR')}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(file.url, '_blank')}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleFileDelete(file.id, file.path)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1783,6 +2121,8 @@ export function OSDetailsWorkflowPage({ onBack, osId: osIdProp }: OSDetailsWorkf
               disableNext={isLoading}
               isLoading={isCreatingOS}
               loadingText={currentStep === 2 ? 'Criando OS no Supabase...' : 'Processando...'}
+              readOnlyMode={isHistoricalNavigation}
+              onReturnToActive={handleReturnToActive}
             />
           </Card>
         </div>

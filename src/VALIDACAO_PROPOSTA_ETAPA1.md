@@ -1,9 +1,13 @@
 # Validação Dinâmica de Dados da Etapa 1 na Proposta Comercial
 
+> ⚠️ **DOCUMENTO ARQUIVADO** - 14/11/2025  
+> Esta feature foi 100% implementada e está em produção.  
+> Referência histórica mantida. Ver `/src/FEATURES_IMPLEMENTADAS_LOG.md` para detalhes.
+
 **Data:** 10/11/2025  
 **Componente:** `step-gerar-proposta-os01-04.tsx`  
 **Funcionalidade:** Etapa 9 - Gerar Proposta Comercial  
-**Status:** ✅ Implementado
+**Status:** ✅ Implementado | 📦 ARQUIVADO
 
 ---
 

@@ -59,7 +59,7 @@ export function OSCreationHub({ onNavigate }: OSCreationHubProps) {
                 route: '/os/criar/solicitacao-reforma'
               },
               {
-                label: 'Vistoria Técnica (OS 08)',
+                label: 'Visita Técnica / Parecer Técnico (OS 08)',
                 route: '/os/criar/vistoria'
               }
             ]}

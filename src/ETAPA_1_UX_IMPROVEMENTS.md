@@ -1,5 +1,11 @@
 # ✨ Melhorias de UX - Etapa 1: Identificação do Cliente/Lead
 
+> ⚠️ **DOCUMENTO ARQUIVADO** - 14/11/2025  
+> Esta feature foi 100% implementada e está em produção.  
+> Referência histórica mantida. Ver `/src/FEATURES_IMPLEMENTADAS_LOG.md` para detalhes.
+
+## 📦 Status: IMPLEMENTADO | ARQUIVADO
+
 ## 🎯 Objetivo
 
 Modernizar e simplificar a interface de seleção/criação de clientes na Etapa 1 do fluxo de OS 01-04, seguindo padrões de UX profissionais utilizados por empresas como Stripe, Linear e Notion.
